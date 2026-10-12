@@ -2,11 +2,15 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import './Navbar.css';
 import {
   LayoutDashboard,
+  UserCheck,
+  Stethoscope,
+  Users,
   Beaker,
   ClipboardList,
+  Layers,
   Box,
+  BarChart3,
   History,
-  Users,
   LogOut,
   User as UserIcon,
 } from 'lucide-react';
@@ -18,7 +22,6 @@ export function Navbar() {
   const navigate = useNavigate();
   const { usuario, perfil, isAuthenticated, logout } = useAuth();
 
-  // Se não estiver autenticado ou na tela de login, oculta links de navegação
   if (!isAuthenticated || location.pathname === '/login') {
     return (
       <nav className="navbar">
@@ -30,15 +33,19 @@ export function Navbar() {
   }
 
   const allLinks = [
-    { to: '/', label: 'Home', icon: <LayoutDashboard size={18} />, roles: ['ADMIN', 'ESTOQUISTA', 'ATENDENTE', 'GESTOR'] },
-    { to: '/insumos', label: 'Insumos', icon: <Beaker size={18} />, roles: ['ADMIN', 'ESTOQUISTA'] },
-    { to: '/exames', label: 'Exames', icon: <ClipboardList size={18} />, roles: ['ADMIN'] },
-    { to: '/estoque', label: 'Movimentar', icon: <Box size={18} />, roles: ['ADMIN', 'ESTOQUISTA'] },
-    { to: '/estoque/movimentacoes', label: 'Extrato', icon: <History size={18} />, roles: ['ADMIN', 'ESTOQUISTA', 'GESTOR'] },
-    { to: '/atendimentos', label: 'Atendimentos', icon: <Users size={18} />, roles: ['ADMIN', 'ATENDENTE', 'GESTOR'] },
+    { to: '/', label: 'Início', icon: <LayoutDashboard size={16} />, roles: ['ADMIN', 'ESTOQUISTA', 'ATENDENTE', 'GESTOR'] },
+    { to: '/pacientes', label: 'Pacientes', icon: <UserCheck size={16} />, roles: ['ADMIN', 'ATENDENTE', 'GESTOR'] },
+    { to: '/medicos', label: 'Médicos', icon: <Stethoscope size={16} />, roles: ['ADMIN', 'GESTOR'] },
+    { to: '/atendimentos', label: 'Atendimentos', icon: <Users size={16} />, roles: ['ADMIN', 'ATENDENTE', 'GESTOR'] },
+    { to: '/insumos', label: 'Insumos', icon: <Beaker size={16} />, roles: ['ADMIN', 'ESTOQUISTA'] },
+    { to: '/exames', label: 'Exames', icon: <ClipboardList size={16} />, roles: ['ADMIN'] },
+    { to: '/exame-insumos', label: 'Ficha Técnica', icon: <Layers size={16} />, roles: ['ADMIN', 'ESTOQUISTA'] },
+    { to: '/estoque', label: 'Movimentar', icon: <Box size={16} />, roles: ['ADMIN', 'ESTOQUISTA'] },
+    { to: '/estoque/saldo', label: 'Saldo', icon: <BarChart3 size={16} />, roles: ['ADMIN', 'ESTOQUISTA', 'GESTOR'] },
+    { to: '/estoque/movimentacoes', label: 'Extrato', icon: <History size={16} />, roles: ['ADMIN', 'ESTOQUISTA', 'GESTOR'] },
   ];
 
-  // Filtra os links visíveis com base no perfil do usuário (ADMIN sempre vê tudo)
+  // ADMIN visualiza todos os links do sistema
   const visibleLinks = allLinks.filter(
     (link) => perfil === 'ADMIN' || (perfil && link.roles.includes(perfil))
   );
@@ -63,14 +70,14 @@ export function Navbar() {
             className={`navbar-link ${location.pathname === link.to ? 'active' : ''}`}
           >
             {link.icon}
-            {link.label}
+            <span>{link.label}</span>
           </Link>
         ))}
       </div>
 
       <div className="navbar-user">
         <div className="navbar-user-info" title={usuario?.email}>
-          <UserIcon size={16} className="text-gray-500" />
+          <UserIcon size={15} className="text-gray-500" />
           <span className="navbar-user-name">{usuario?.nome || 'Usuário'}</span>
           <span className="navbar-user-role">{perfil || 'PERFIL'}</span>
         </div>
@@ -81,7 +88,7 @@ export function Navbar() {
           title="Sair do sistema"
           type="button"
         >
-          <LogOut size={16} />
+          <LogOut size={15} />
           <span>Sair</span>
         </button>
       </div>

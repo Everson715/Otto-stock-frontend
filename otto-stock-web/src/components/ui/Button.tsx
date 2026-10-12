@@ -6,6 +6,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
 }
 
 export function Button({ 
@@ -13,6 +14,7 @@ export function Button({
   variant = 'primary', 
   isLoading = false, 
   leftIcon,
+  rightIcon,
   className = '',
   disabled,
   ...props 
@@ -29,6 +31,7 @@ export function Button({
         leftIcon
       )}
       {children}
+      {!isLoading && rightIcon}
     </button>
   );
 }

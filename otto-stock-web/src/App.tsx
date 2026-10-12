@@ -7,10 +7,14 @@ import { Navbar } from './components/Navbar';
 
 import { Login } from './pages/Login';
 import { Home } from './pages/Home';
+import { Pacientes } from './pages/Pacientes';
+import { Medicos } from './pages/Medicos';
+import { Atendimentos } from './pages/Atendimentos';
 import { Insumos } from './pages/Insumos';
 import { Exames } from './pages/Exames';
+import { ExameInsumos } from './pages/ExameInsumos';
 import { Estoque } from './pages/Estoque';
-import { Atendimentos } from './pages/Atendimentos';
+import { EstoqueSaldo } from './pages/EstoqueSaldo';
 import { Movimentacoes } from './pages/Movimentacoes';
 
 export default function App() {
@@ -24,7 +28,7 @@ export default function App() {
           {/* Rota pública de autenticação */}
           <Route path="/login" element={<Login />} />
 
-          {/* Rotas de negócio protegidas */}
+          {/* Dashboard Geral */}
           <Route
             path="/"
             element={
@@ -33,6 +37,38 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Módulo Pacientes */}
+          <Route
+            path="/pacientes"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'ATENDENTE', 'GESTOR']}>
+                <Pacientes />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Módulo Médicos */}
+          <Route
+            path="/medicos"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'GESTOR']}>
+                <Medicos />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Módulo Atendimentos */}
+          <Route
+            path="/atendimentos"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'ATENDENTE', 'GESTOR']}>
+                <Atendimentos />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Módulo Insumos */}
           <Route
             path="/insumos"
             element={
@@ -41,6 +77,8 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Módulo Exames */}
           <Route
             path="/exames"
             element={
@@ -49,6 +87,18 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Módulo Ficha Técnica (Exame - Insumos) */}
+          <Route
+            path="/exame-insumos"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'ESTOQUISTA']}>
+                <ExameInsumos />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Módulo Estoque / Movimentar */}
           <Route
             path="/estoque"
             element={
@@ -57,19 +107,23 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Módulo Estoque / Saldo Consolidado */}
+          <Route
+            path="/estoque/saldo"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'ESTOQUISTA', 'GESTOR']}>
+                <EstoqueSaldo />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Módulo Estoque / Histórico de Movimentações */}
           <Route
             path="/estoque/movimentacoes"
             element={
               <ProtectedRoute allowedRoles={['ADMIN', 'ESTOQUISTA', 'GESTOR']}>
                 <Movimentacoes />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/atendimentos"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN', 'ATENDENTE', 'GESTOR']}>
-                <Atendimentos />
               </ProtectedRoute>
             }
           />
