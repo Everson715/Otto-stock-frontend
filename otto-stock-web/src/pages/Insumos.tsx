@@ -27,7 +27,8 @@ export function Insumos() {
     setIsLoading(true)
     try {
       const response = await api.get("/insumos")
-      setInsumos(response.data)
+      const data = Array.isArray(response.data) ? response.data : response.data.items || []
+      setInsumos(data)
     } catch (error) {
       toast.error("Erro ao carregar insumos")
     } finally {

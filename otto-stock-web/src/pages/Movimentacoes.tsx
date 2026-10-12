@@ -22,7 +22,8 @@ export function Movimentacoes() {
     setIsLoading(true)
     try {
       const response = await api.get("/estoque/movimentacoes")
-      setMovimentacoes(response.data)
+      const data = Array.isArray(response.data) ? response.data : response.data.items || []
+      setMovimentacoes(data)
     } catch (error) {
       toast.error("Erro ao carregar histórico de movimentações")
     } finally {

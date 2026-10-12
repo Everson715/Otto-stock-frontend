@@ -1,33 +1,83 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom"
-import { Toaster } from 'sonner'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 
-import { Navbar } from "./components/Navbar"
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { Navbar } from './components/Navbar';
 
-import { Home } from "./pages/Home"
-import { Insumos } from "./pages/Insumos"
-import { Exames } from "./pages/Exames"
-import { Estoque } from "./pages/Estoque"
-import { Atendimentos } from "./pages/Atendimentos"
-import { Movimentacoes } from "./pages/Movimentacoes"
+import { Login } from './pages/Login';
+import { Home } from './pages/Home';
+import { Insumos } from './pages/Insumos';
+import { Exames } from './pages/Exames';
+import { Estoque } from './pages/Estoque';
+import { Atendimentos } from './pages/Atendimentos';
+import { Movimentacoes } from './pages/Movimentacoes';
 
 export default function App() {
-
   return (
     <BrowserRouter>
-      <Toaster richColors position="top-right" />
-      <Navbar />
+      <AuthProvider>
+        <Toaster richColors position="top-right" />
+        <Navbar />
 
-      <Routes>
+        <Routes>
+          {/* Rota pública de autenticação */}
+          <Route path="/login" element={<Login />} />
 
-        <Route path="/" element={<Home />} />
-        <Route path="/insumos" element={<Insumos />} />
-        <Route path="/exames" element={<Exames />} />
-        <Route path="/estoque" element={<Estoque />} />
-        <Route path="/estoque/movimentacoes" element={<Movimentacoes />} />
-        <Route path="/atendimentos" element={<Atendimentos />} />
+          {/* Rotas de negócio protegidas */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/insumos"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'ESTOQUISTA']}>
+                <Insumos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/exames"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <Exames />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/estoque"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'ESTOQUISTA']}>
+                <Estoque />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/estoque/movimentacoes"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'ESTOQUISTA', 'GESTOR']}>
+                <Movimentacoes />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/atendimentos"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'ATENDENTE', 'GESTOR']}>
+                <Atendimentos />
+              </ProtectedRoute>
+            }
+          />
 
-      </Routes>
-
+          {/* Redirecionamento padrão */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
-  )
+  );
 }

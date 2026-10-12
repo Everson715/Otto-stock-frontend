@@ -15,7 +15,8 @@ export function Estoque() {
   async function carregarInsumos() {
     try {
       const res = await api.get("/insumos")
-      setInsumos(res.data)
+      const data = Array.isArray(res.data) ? res.data : res.data.items || []
+      setInsumos(data)
     } catch (error) {
       toast.error("Erro ao carregar insumos")
     }
