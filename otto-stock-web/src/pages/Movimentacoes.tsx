@@ -260,6 +260,7 @@ export function Movimentacoes() {
             columns={columns}
             data={movimentacoes}
             keyExtractor={(m) => m.id}
+            emptyMessage="Nenhuma movimentação de estoque encontrada para os filtros selecionados."
           />
 
           {totalPages > 1 && (

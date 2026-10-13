@@ -210,7 +210,12 @@ export function Exames() {
         </div>
       ) : (
         <>
-          <Table columns={columns} data={paginatedExames} keyExtractor={(e) => e.id} />
+          <Table
+            columns={columns}
+            data={paginatedExames}
+            keyExtractor={(e) => e.id}
+            emptyMessage="Nenhum exame cadastrado. Clique no botão 'Novo Exame' acima para cadastrar procedimentos."
+          />
 
           {filteredExames.length > pageSize && (
             <div className="pagination-container">

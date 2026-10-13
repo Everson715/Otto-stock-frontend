@@ -17,7 +17,7 @@ export function Estoque() {
       const res = await api.get("/insumos")
       const data = Array.isArray(res.data) ? res.data : res.data.items || []
       setInsumos(data)
-    } catch (error) {
+    } catch {
       toast.error("Erro ao carregar insumos")
     }
   }
@@ -37,8 +37,13 @@ export function Estoque() {
       toast.success(`Movimentação de ${tipo} realizada com sucesso`)
       setInsumoId("")
       setQuantidade("")
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Erro ao processar movimentação")
+    } catch (err: unknown) {
+      let msg = "Erro ao processar movimentação"
+      if (err && typeof err === "object" && "response" in err) {
+        const axErr = err as { response?: { data?: { message?: string } } }
+        msg = axErr.response?.data?.message || msg
+      }
+      toast.error(msg)
     } finally {
       setIsPending(false)
     }

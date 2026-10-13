@@ -329,6 +329,7 @@ export function Atendimentos() {
             columns={columns}
             data={filteredAtendimentos}
             keyExtractor={(a) => a.id}
+            emptyMessage="Nenhum atendimento clínico encontrado. Clique no botão 'Novo Atendimento' acima para registrar."
           />
 
           {totalPages > 1 && (

@@ -207,6 +207,7 @@ export function Medicos() {
             columns={columns}
             data={paginatedMedicos}
             keyExtractor={(item) => item.id}
+            emptyMessage="Nenhum médico cadastrado. Clique no botão 'Novo Médico' acima para adicionar ao corpo clínico."
           />
 
           {filteredMedicos.length > pageSize && (

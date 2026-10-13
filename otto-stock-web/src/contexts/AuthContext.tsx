@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../api/api';
 import type { Usuario, Perfil, LoginResponse } from '../types/auth';

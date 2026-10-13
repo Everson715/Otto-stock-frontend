@@ -197,6 +197,7 @@ export function Pacientes() {
             columns={columns}
             data={paginatedPacientes}
             keyExtractor={(item) => item.id}
+            emptyMessage="Nenhum paciente cadastrado. Clique no botão 'Novo Paciente' acima para iniciar o cadastro."
           />
 
           {filteredPacientes.length > pageSize && (

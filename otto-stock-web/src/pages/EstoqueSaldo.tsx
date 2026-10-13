@@ -198,6 +198,7 @@ export function EstoqueSaldo() {
             columns={columns}
             data={paginatedSaldos}
             keyExtractor={(item) => item.id}
+            emptyMessage="Nenhum insumo encontrado em estoque. Registre entradas no módulo de movimentação para gerar os saldos."
           />
 
           {filteredSaldos.length > pageSize && (

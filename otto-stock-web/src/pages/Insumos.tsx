@@ -228,7 +228,12 @@ export function Insumos() {
         </div>
       ) : (
         <>
-          <Table columns={columns} data={insumos} keyExtractor={(i) => i.id} />
+          <Table
+            columns={columns}
+            data={insumos}
+            keyExtractor={(i) => i.id}
+            emptyMessage="Nenhum insumo encontrado. Clique no botão 'Novo Insumo' acima para adicionar ao catálogo."
+          />
 
           {totalPages > 1 && (
             <div className="pagination-container">

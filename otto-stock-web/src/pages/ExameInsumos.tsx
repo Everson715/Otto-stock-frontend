@@ -208,6 +208,7 @@ export function ExameInsumos() {
             columns={columns}
             data={paginatedVinculos}
             keyExtractor={(item) => item.id}
+            emptyMessage="Nenhum vínculo na ficha técnica. Clique no botão 'Vincular Insumo' acima para associar materiais aos exames."
           />
 
           {filteredVinculos.length > pageSize && (
