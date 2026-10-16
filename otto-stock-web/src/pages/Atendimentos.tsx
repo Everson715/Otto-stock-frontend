@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -53,6 +54,7 @@ interface AtendimentoItem {
 }
 
 export function Atendimentos() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [atendimentos, setAtendimentos] = useState<AtendimentoItem[]>([]);
   const [pacientes, setPacientes] = useState<{ id: number; nome: string; cpf?: string }[]>([]);
   const [medicos, setMedicos] = useState<{ id: number; nome: string }[]>([]);
@@ -128,6 +130,16 @@ export function Atendimentos() {
   useEffect(() => {
     carregarDadosForm();
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get('novo') === '1') {
+      reset();
+      setIsModalOpen(true);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('novo');
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, reset]);
 
   const filteredAtendimentos = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
