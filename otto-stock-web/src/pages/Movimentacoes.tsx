@@ -1,20 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ArrowUpCircle,
   ArrowDownCircle,
-  Sliders,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
+  ArrowUpCircle,
+  History,
+  Package,
   RefreshCw,
+  Sliders,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { api } from '../api/api';
+import { useAuth } from '../contexts/AuthContext';
+import { hasRouteAccess } from '../types/auth';
+import { formatarNumero, tempoRelativo } from '../utils/format';
 import { Button } from '../components/ui/Button';
-import { Table } from '../components/ui/Table';
-import { Select } from '../components/ui/Select';
 import { Input } from '../components/ui/Input';
+import { PageHeader } from '../components/ui/PageHeader';
+import { Pagination } from '../components/ui/Pagination';
+import { Select } from '../components/ui/Select';
+import { Skeleton } from '../components/ui/Skeleton';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import { Table, type Column } from '../components/ui/Table';
+import { Tabs, type RouteTabItem } from '../components/ui/Tabs';
 
 interface MovimentacaoItem {
   id: number;
@@ -23,7 +30,7 @@ interface MovimentacaoItem {
   motivo?: string;
   createdAt: string;
   insumoId: number;
-  usuarioId?: number;
+  usuarioId?: number | null;
   insumo?: {
     id: number;
     nome: string;
@@ -31,10 +38,13 @@ interface MovimentacaoItem {
   usuario?: {
     nome: string;
     email: string;
-  };
+  } | null;
 }
 
 export function Movimentacoes() {
+  const { perfil } = useAuth();
+  const canMovimentar = hasRouteAccess(perfil, '/estoque');
+
   const [movimentacoes, setMovimentacoes] = useState<MovimentacaoItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -49,7 +59,7 @@ export function Movimentacoes() {
   const [totalCount, setTotalCount] = useState<number>(0);
   const limit = 10;
 
-  async function carregarMovimentacoes() {
+  const carregarMovimentacoes = useCallback(async () => {
     setIsLoading(true);
     try {
       const params: Record<string, string | number> = {
@@ -61,21 +71,21 @@ export function Movimentacoes() {
         params.tipo = tipoFilter;
       }
       if (dataInicio) {
-        const dIni = new Date(dataInicio);
-        dIni.setHours(0, 0, 0, 0);
+        const dIni = new Date(`${dataInicio}T00:00:00`);
         params.startDate = dIni.toISOString();
       }
       if (dataFim) {
-        const dFim = new Date(dataFim);
-        dFim.setHours(23, 59, 59, 999);
+        const dFim = new Date(`${dataFim}T23:59:59.999`);
         params.endDate = dFim.toISOString();
       }
 
       const response = await api.get('/estoque/movimentacoes', { params });
       const items: MovimentacaoItem[] =
-        response.data?.items ?? (Array.isArray(response.data) ? response.data : []);
+        response.data?.items ??
+        (Array.isArray(response.data) ? response.data : []);
       const total = response.data?.total ?? items.length;
-      const pages = response.data?.totalPages ?? (Math.ceil(total / limit) || 1);
+      const pages =
+        response.data?.totalPages ?? (Math.ceil(total / limit) || 1);
 
       setMovimentacoes(items);
       setTotalCount(total);
@@ -85,11 +95,34 @@ export function Movimentacoes() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [page, limit, tipoFilter, dataInicio, dataFim]);
 
   useEffect(() => {
     carregarMovimentacoes();
-  }, [page, tipoFilter, dataInicio, dataFim]);
+  }, [carregarMovimentacoes]);
+
+  const tabsItems = useMemo<RouteTabItem[]>(() => {
+    const items: RouteTabItem[] = [
+      {
+        label: 'Saldo Atual de Insumos',
+        to: '/estoque/saldo',
+        icon: <Package size={15} />,
+      },
+      {
+        label: 'Histórico de Movimentações',
+        to: '/estoque/movimentacoes',
+        icon: <History size={15} />,
+      },
+    ];
+    if (canMovimentar) {
+      items.push({
+        label: 'Movimentar (Entrada / Saída / Ajuste)',
+        to: '/estoque',
+        icon: <Sliders size={15} />,
+      });
+    }
+    return items;
+  }, [canMovimentar]);
 
   function handleLimparFiltros() {
     setTipoFilter('');
@@ -98,109 +131,149 @@ export function Movimentacoes() {
     setPage(1);
   }
 
-  const columns = [
-    { header: 'ID', accessor: 'id' as keyof MovimentacaoItem },
+  const columns: Column<MovimentacaoItem>[] = [
     {
       header: 'Data / Hora',
-      accessor: (m: MovimentacaoItem) => (
-        <span className="text-xs text-gray-500">
-          {m.createdAt ? new Date(m.createdAt).toLocaleString('pt-BR') : '-'}
-        </span>
-      ),
-    },
-    {
-      header: 'Insumo',
-      accessor: (m: MovimentacaoItem) => (
-        <strong>{m.insumo?.nome || `Insumo #${m.insumoId}`}</strong>
+      accessor: (m) => (
+        <div className="flex flex-col">
+          <span className="font-data-mono text-body-sm text-on-surface">
+            {m.createdAt
+              ? new Date(m.createdAt).toLocaleString('pt-BR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+              : '—'}
+          </span>
+          <span className="text-label-sm text-outline">
+            {tempoRelativo(m.createdAt)}
+          </span>
+        </div>
       ),
     },
     {
       header: 'Tipo',
-      accessor: (m: MovimentacaoItem) => {
+      accessor: (m) => {
         const t = m.tipo.toUpperCase();
         if (t === 'ENTRADA') {
           return (
-            <div className="flex items-center gap-1 text-green-700">
-              <ArrowUpCircle className="size-4" />
-              <span className="font-semibold text-xs">ENTRADA</span>
-            </div>
+            <StatusBadge
+              variant="conforme"
+              label="ENTRADA"
+              icon={<ArrowUpCircle size={14} className="shrink-0" />}
+            />
           );
-        } else if (t === 'SAIDA') {
+        }
+        if (t === 'SAIDA') {
           return (
-            <div className="flex items-center gap-1 text-red-600">
-              <ArrowDownCircle className="size-4" />
-              <span className="font-semibold text-xs">SAÍDA</span>
-            </div>
+            <StatusBadge
+              variant="critico"
+              label="SAÍDA"
+              icon={<ArrowDownCircle size={14} className="shrink-0" />}
+            />
           );
         }
         return (
-          <div className="flex items-center gap-1 text-amber-700">
-            <Sliders className="size-4" />
-            <span className="font-semibold text-xs">AJUSTE</span>
-          </div>
+          <StatusBadge
+            variant="atencao"
+            label="AJUSTE"
+            icon={<Sliders size={14} className="shrink-0" />}
+          />
         );
       },
     },
     {
+      header: 'Insumo',
+      accessor: (m) => (
+        <div className="flex items-center gap-2">
+          <span className="font-data-mono text-label-sm text-outline">
+            #{m.insumoId}
+          </span>
+          <strong className="text-on-surface font-semibold">
+            {m.insumo?.nome || `Insumo #${m.insumoId}`}
+          </strong>
+        </div>
+      ),
+    },
+    {
       header: 'Quantidade',
-      accessor: (m: MovimentacaoItem) => {
-        const isSaida = m.tipo === 'SAIDA';
+      align: 'right',
+      accessor: (m) => {
+        const t = m.tipo.toUpperCase();
+        const isNegativo = t === 'SAIDA' || m.quantidade < 0;
+        const absQtd = Math.abs(m.quantidade);
         return (
-          <strong style={{ color: isSaida ? '#dc2626' : '#16a34a' }}>
-            {isSaida ? `-${m.quantidade}` : `+${m.quantidade}`}
+          <strong
+            className={`font-data-mono tabular-nums ${
+              isNegativo ? 'text-error' : 'text-secondary'
+            }`}
+          >
+            {isNegativo
+              ? `-${formatarNumero(absQtd)}`
+              : `+${formatarNumero(absQtd)}`}
           </strong>
         );
       },
     },
     {
-      header: 'Motivo / Descrição',
-      accessor: (m: MovimentacaoItem) => (
-        <span className="text-xs text-gray-600">{m.motivo || 'Lançamento manual'}</span>
+      header: 'Motivo',
+      accessor: (m) => (
+        <span className="text-body-sm text-on-surface-variant">
+          {m.motivo || 'Lançamento manual'}
+        </span>
       ),
     },
     {
       header: 'Responsável',
-      accessor: (m: MovimentacaoItem) => (
-        <span className="text-xs text-gray-500" title={m.usuario?.email}>
-          {m.usuario?.nome || '-'}
+      accessor: (m) => (
+        <span
+          className="text-body-sm text-on-surface font-medium"
+          title={m.usuario?.email || undefined}
+        >
+          {m.usuario?.nome || 'Sistema'}
         </span>
       ),
     },
   ];
 
   return (
-    <div className="flex flex-col gap-4 p-4 text-left">
-      <div className="flex justify-between items-center flex-wrap gap-2">
-        <div>
-          <h2>Extrato de Movimentações</h2>
-          <p className="text-sm text-gray-500">
-            Histórico contábil de entradas, saídas e baixas automáticas de estoque
-          </p>
-        </div>
-        <Button
-          variant="secondary"
-          onClick={carregarMovimentacoes}
-          disabled={isLoading}
-          leftIcon={<RefreshCw className={`size-4 ${isLoading ? 'animate-spin' : ''}`} />}
-        >
-          Atualizar Extrato
-        </Button>
+    <div className="w-full max-w-[1600px] mx-auto px-gutter lg:px-margin-desktop py-space-lg flex flex-col gap-space-lg">
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Início', to: '/' },
+          { label: 'Estoque', to: '/estoque/saldo' },
+          { label: 'Histórico de Movimentações' },
+        ]}
+        titulo="Extrato de Movimentações"
+        subtitulo="Histórico auditável de entradas, saídas manuais, ajustes e baixas automáticas por atendimento."
+        acoes={
+          <Button
+            variant="secondary"
+            onClick={carregarMovimentacoes}
+            disabled={isLoading}
+            leftIcon={
+              <RefreshCw
+                size={16}
+                className={isLoading ? 'animate-spin' : ''}
+              />
+            }
+          >
+            Atualizar Extrato
+          </Button>
+        }
+      />
+
+      <div className="flex items-center justify-between flex-wrap gap-space-sm">
+        <Tabs items={tabsItems} />
       </div>
 
       {/* Painel de Filtros */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: '0.75rem',
-          background: 'white',
-          padding: '1rem',
-          borderRadius: '0.75rem',
-          border: '1px solid #e5e7eb',
-        }}
-      >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md bg-surface-container-lowest p-space-md rounded-xl border border-outline-variant/40 items-end">
         <Select
-          label="Filtrar por Tipo"
+          label="Tipo de Operação"
+          placeholder="Todos os tipos"
           options={[
             { label: 'Entradas', value: 'ENTRADA' },
             { label: 'Saídas', value: 'SAIDA' },
@@ -233,7 +306,7 @@ export function Movimentacoes() {
           }}
         />
 
-        <div className="flex items-end">
+        <div className="flex items-center justify-between gap-space-sm">
           <Button
             variant="secondary"
             onClick={handleLimparFiltros}
@@ -245,14 +318,12 @@ export function Movimentacoes() {
         </div>
       </div>
 
-      <div className="flex justify-between items-center text-sm text-gray-500 mt-1">
-        <span>Total de movimentações registradas: {totalCount}</span>
-      </div>
-
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center p-12 gap-2">
-          <Loader2 className="animate-spin size-8 text-blue-500" />
-          <span className="text-sm text-gray-500">Carregando extrato de movimentações...</span>
+        <div className="flex flex-col gap-2 bg-surface-container-lowest p-space-lg rounded-xl border border-outline-variant/40">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
         </div>
       ) : (
         <>
@@ -263,31 +334,14 @@ export function Movimentacoes() {
             emptyMessage="Nenhuma movimentação de estoque encontrada para os filtros selecionados."
           />
 
-          {totalPages > 1 && (
-            <div className="pagination-container">
-              <span className="pagination-info">
-                Página {page} de {totalPages} ({totalCount} registros)
-              </span>
-              <div className="pagination-actions">
-                <Button
-                  variant="secondary"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  leftIcon={<ChevronLeft className="size-4" />}
-                >
-                  Anterior
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  rightIcon={<ChevronRight className="size-4" />}
-                >
-                  Próxima
-                </Button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={totalCount}
+            isLoading={isLoading}
+            onPageChange={setPage}
+            itemLabel="movimentações"
+          />
         </>
       )}
     </div>
