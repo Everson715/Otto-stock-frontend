@@ -1,15 +1,23 @@
 import { useState, useEffect, useMemo } from 'react';
-import { AlertTriangle, CheckCircle, RefreshCw, ChevronLeft, ChevronRight, Loader2, ArrowUpRight } from 'lucide-react';
+import { RefreshCw, ChevronLeft, ChevronRight, Loader2, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { api } from '../api/api';
+import { useAuth } from '../contexts/AuthContext';
+import { hasRouteAccess } from '../types/auth';
 import type { EstoqueSaldoItem } from '../types/estoqueSaldo';
+import { getNivelEstoque } from '../utils/estoque';
+import { formatarNumero } from '../utils/format';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Table } from '../components/ui/Table';
+import { Table, type Column } from '../components/ui/Table';
+import { StatusBadge } from '../components/ui/StatusBadge';
 
 export function EstoqueSaldo() {
+  const { perfil } = useAuth();
+  const canMovimentar = hasRouteAccess(perfil, '/estoque');
+
   const [saldos, setSaldos] = useState<EstoqueSaldoItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,7 +45,9 @@ export function EstoqueSaldo() {
   const filteredSaldos = useMemo(() => {
     let list = saldos;
     if (apenasCriticos) {
-      list = list.filter((item) => item.alerta || item.saldo < item.quantidadeMinima);
+      list = list.filter(
+        (item) => getNivelEstoque(item.saldo, item.quantidadeMinima).status === 'critico'
+      );
     }
     const term = searchTerm.toLowerCase().trim();
     if (term) {
@@ -53,69 +63,79 @@ export function EstoqueSaldo() {
   }, [filteredSaldos, page, pageSize]);
 
   const totalCriticos = useMemo(() => {
-    return saldos.filter((s) => s.alerta || s.saldo < s.quantidadeMinima).length;
+    return saldos.filter(
+      (s) => getNivelEstoque(s.saldo, s.quantidadeMinima).status === 'critico'
+    ).length;
   }, [saldos]);
 
-  const columns = [
-    { header: 'ID', accessor: 'id' as keyof EstoqueSaldoItem },
+  const columns: Column<EstoqueSaldoItem>[] = [
+    { header: 'ID', accessor: 'id', align: 'right' },
     {
       header: 'Insumo',
-      accessor: (item: EstoqueSaldoItem) => (
-        <span style={{ fontWeight: 500, color: item.alerta ? '#b91c1c' : 'inherit' }}>
-          {item.nome}
-        </span>
-      ),
-    },
-    {
-      header: 'Unidade',
-      accessor: () => (
-        <span className="text-xs text-gray-400" title="Unidade pendente no backend (ver PENDENCIAS_BACKEND.md)">
-          un
-        </span>
-      ),
-    },
-    {
-      header: 'Saldo Atual',
-      accessor: (item: EstoqueSaldoItem) => (
-        <strong style={{ fontSize: '1rem', color: item.alerta ? '#b91c1c' : '#047857' }}>
-          {item.saldo}
-        </strong>
-      ),
-    },
-    {
-      header: 'Mínimo Recomendado',
-      accessor: (item: EstoqueSaldoItem) => item.quantidadeMinima,
-    },
-    {
-      header: 'Status de Estoque',
       accessor: (item: EstoqueSaldoItem) => {
-        const isCritico = item.alerta || item.saldo < item.quantidadeMinima;
-        return isCritico ? (
-          <span className="badge-alerta" title="Estoque abaixo da quantidade mínima estipulada">
-            <AlertTriangle className="size-3" />
-            Crítico ({item.saldo - item.quantidadeMinima})
-          </span>
-        ) : (
-          <span className="badge-ok" title="Estoque em nível regular">
-            <CheckCircle className="size-3" />
-            Regular
+        const nivel = getNivelEstoque(item.saldo, item.quantidadeMinima);
+        return (
+          <span
+            className={
+              nivel.status === 'critico'
+                ? 'font-semibold text-error'
+                : 'font-medium text-on-surface'
+            }
+          >
+            {item.nome}
           </span>
         );
       },
     },
     {
-      header: 'Ação Rápida',
-      accessor: () => (
-        <Link
-          to="/estoque"
-          className="btn btn-secondary text-xs"
-          style={{ padding: '0.25rem 0.5rem', textDecoration: 'none' }}
-        >
-          Repor
-          <ArrowUpRight className="size-3" />
-        </Link>
-      ),
+      header: 'Saldo Atual',
+      align: 'right',
+      accessor: (item: EstoqueSaldoItem) => {
+        const nivel = getNivelEstoque(item.saldo, item.quantidadeMinima);
+        return (
+          <strong
+            className={
+              nivel.status === 'critico'
+                ? 'text-error'
+                : nivel.status === 'atencao'
+                ? 'text-tertiary'
+                : 'text-secondary'
+            }
+          >
+            {formatarNumero(item.saldo)}
+          </strong>
+        );
+      },
     },
+    {
+      header: 'Mínimo Recomendado',
+      align: 'right',
+      accessor: (item: EstoqueSaldoItem) => formatarNumero(item.quantidadeMinima),
+    },
+    {
+      header: 'Status de Estoque',
+      accessor: (item: EstoqueSaldoItem) => {
+        const nivel = getNivelEstoque(item.saldo, item.quantidadeMinima);
+        return <StatusBadge variant={nivel.status} label={nivel.label} />;
+      },
+    },
+    ...(canMovimentar
+      ? [
+          {
+            header: 'Ação Rápida',
+            accessor: () => (
+              <Link
+                to="/estoque"
+                className="btn btn-secondary text-xs"
+                style={{ padding: '0.25rem 0.5rem', textDecoration: 'none' }}
+              >
+                Repor
+                <ArrowUpRight className="size-3" />
+              </Link>
+            ),
+          } satisfies Column<EstoqueSaldoItem>,
+        ]
+      : []),
   ];
 
   return (

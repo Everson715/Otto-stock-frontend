@@ -1,7 +1,19 @@
 /**
- * Aplica máscara de CPF no padrão 000.000.000-00.
+ * Mascara o CPF conforme LGPD para exibição fora de /pacientes: •••.456.789-••
  */
 export function mascararCpf(valor: string | null | undefined): string {
+  if (!valor) return '•••.•••.•••-••';
+  const digitos = valor.replace(/\D/g, '');
+  if (digitos.length !== 11) {
+    return '•••.•••.•••-••';
+  }
+  return `•••.${digitos.slice(3, 6)}.${digitos.slice(6, 9)}-••`;
+}
+
+/**
+ * Formata o CPF completo (000.000.000-00) — uso exclusivo em /pacientes.
+ */
+export function formatarCpfCompleto(valor: string | null | undefined): string {
   if (!valor) return '';
   const digitos = valor.replace(/\D/g, '').slice(0, 11);
   if (digitos.length <= 3) return digitos;
@@ -13,43 +25,73 @@ export function mascararCpf(valor: string | null | undefined): string {
 }
 
 /**
- * Calcula a idade em anos completos a partir de uma data de nascimento (ISO ou Date).
+ * Formata o CRM do médico (opcional no schema).
  */
-export function calcularIdade(dataNascimento: string | Date | null | undefined): number | null {
+export function formatarCrm(crm: string | null | undefined): string {
+  const limpo = crm?.trim();
+  return limpo ? limpo : 'CRM não informado';
+}
+
+/**
+ * Calcula a idade em anos completos a partir de Paciente.dataNascimento (opcional).
+ * Se ausente ou inválida, retorna null para que a UI omita o campo.
+ */
+export function calcularIdade(
+  dataNascimento: string | Date | null | undefined
+): number | null {
   if (!dataNascimento) return null;
-  const nascimento = typeof dataNascimento === 'string' ? new Date(dataNascimento) : dataNascimento;
+  const nascimento =
+    typeof dataNascimento === 'string'
+      ? new Date(dataNascimento)
+      : dataNascimento;
   if (Number.isNaN(nascimento.getTime())) return null;
 
   const hoje = new Date();
   let idade = hoje.getUTCFullYear() - nascimento.getUTCFullYear();
   const mesDiff = hoje.getUTCMonth() - nascimento.getUTCMonth();
-  if (mesDiff < 0 || (mesDiff === 0 && hoje.getUTCDate() < nascimento.getUTCDate())) {
+  if (
+    mesDiff < 0 ||
+    (mesDiff === 0 && hoje.getUTCDate() < nascimento.getUTCDate())
+  ) {
     idade--;
   }
   return idade >= 0 ? idade : null;
 }
 
 /**
- * Retorna string de tempo relativo em português (ex.: "Agora", "Há 42s", "Há 15 min", "Há 2h", "Há 3d").
+ * Retorna string de tempo relativo em português calculado no cliente (ex.: "Há 28 minutos").
  */
-export function tempoRelativo(data: string | Date | number | null | undefined): string {
+export function tempoRelativo(
+  data: string | Date | number | null | undefined
+): string {
   if (!data) return '—';
-  const alvo = typeof data === 'number' ? new Date(data) : typeof data === 'string' ? new Date(data) : data;
+  const alvo =
+    typeof data === 'number'
+      ? new Date(data)
+      : typeof data === 'string'
+      ? new Date(data)
+      : data;
   if (Number.isNaN(alvo.getTime())) return '—';
 
-  const diffSegundos = Math.max(0, Math.floor((Date.now() - alvo.getTime()) / 1000));
+  const diffSegundos = Math.max(
+    0,
+    Math.floor((Date.now() - alvo.getTime()) / 1000)
+  );
 
   if (diffSegundos < 5) return 'Agora';
   if (diffSegundos < 60) return `Há ${diffSegundos}s`;
 
   const diffMinutos = Math.floor(diffSegundos / 60);
-  if (diffMinutos < 60) return `Há ${diffMinutos} min`;
+  if (diffMinutos === 1) return 'Há 1 minuto';
+  if (diffMinutos < 60) return `Há ${diffMinutos} minutos`;
 
   const diffHoras = Math.floor(diffMinutos / 60);
-  if (diffHoras < 24) return `Há ${diffHoras}h`;
+  if (diffHoras === 1) return 'Há 1 hora';
+  if (diffHoras < 24) return `Há ${diffHoras} horas`;
 
   const diffDias = Math.floor(diffHoras / 24);
-  if (diffDias < 30) return `Há ${diffDias}d`;
+  if (diffDias === 1) return 'Há 1 dia';
+  if (diffDias < 30) return `Há ${diffDias} dias`;
 
   return alvo.toLocaleDateString('pt-BR');
 }

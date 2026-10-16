@@ -1,4 +1,6 @@
-export type ProgressBarTone = 'critico' | 'atencao' | 'conforme';
+import { getNivelEstoque, type NivelEstoqueStatus } from '../../utils/estoque';
+
+export type ProgressBarTone = NivelEstoqueStatus;
 
 interface ProgressBarProps {
   saldo: number;
@@ -19,33 +21,20 @@ export function ProgressBar({
   tom,
   className = '',
 }: ProgressBarProps) {
-  // Protege divisão por zero conforme seção 3.2: largura = min(saldo / mínimo, 1)
-  const ratio =
-    minimo <= 0
-      ? saldo > 0
-        ? 1
-        : 0
-      : Math.max(0, Math.min(saldo / minimo, 1));
-
-  const computedTone: ProgressBarTone =
-    tom ??
-    (minimo > 0 && saldo < minimo
-      ? 'critico'
-      : minimo > 0 && saldo <= minimo * 1.2
-      ? 'atencao'
-      : 'conforme');
+  const nivel = getNivelEstoque(saldo, minimo);
+  const computedTone: ProgressBarTone = tom ?? nivel.status;
 
   return (
     <div
       className={`w-full h-2 rounded-full bg-surface-container-high overflow-hidden ${className}`}
       role="progressbar"
-      aria-valuenow={Math.round(ratio * 100)}
+      aria-valuenow={nivel.percentual}
       aria-valuemin={0}
       aria-valuemax={100}
     >
       <div
         className={`h-full rounded-full transition-all duration-300 ${fillClasses[computedTone]}`}
-        style={{ width: `${Math.round(ratio * 100)}%` }}
+        style={{ width: `${nivel.percentual}%` }}
       />
     </div>
   );

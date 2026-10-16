@@ -4,5 +4,4 @@ export interface EstoqueSaldoItem {
   saldo: number;
   quantidadeMinima: number;
   alerta: boolean;
-  unidade?: string;
 }
