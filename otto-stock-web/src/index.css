@@ -1,61 +1,163 @@
+@import "tailwindcss";
+
+@theme {
+  /* Cores — 1:1 do frontmatter do DESIGN.md / config Tailwind dos HTMLs */
+  --color-surface: #faf8ff;
+  --color-surface-dim: #d2d9f4;
+  --color-surface-bright: #faf8ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f2f3ff;
+  --color-surface-container: #eaedff;
+  --color-surface-container-high: #e2e7ff;
+  --color-surface-container-highest: #dae2fd;
+  --color-on-surface: #131b2e;
+  --color-on-surface-variant: #3f4850;
+  --color-inverse-surface: #283044;
+  --color-inverse-on-surface: #eef0ff;
+  --color-outline: #707881;
+  --color-outline-variant: #bfc7d2;
+  --color-surface-tint: #006398;
+  --color-primary: #006194;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #007bb9;
+  --color-on-primary-container: #fdfcff;
+  --color-inverse-primary: #93ccff;
+  --color-secondary: #006c49;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #6cf8bb;
+  --color-on-secondary-container: #00714d;
+  --color-tertiary: #825100;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #a36700;
+  --color-on-tertiary-container: #fffbff;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-primary-fixed: #cce5ff;
+  --color-primary-fixed-dim: #93ccff;
+  --color-on-primary-fixed: #001d31;
+  --color-on-primary-fixed-variant: #004b73;
+  --color-secondary-fixed: #6ffbbe;
+  --color-secondary-fixed-dim: #4edea3;
+  --color-on-secondary-fixed: #002113;
+  --color-on-secondary-fixed-variant: #005236;
+  --color-tertiary-fixed: #ffddb8;
+  --color-tertiary-fixed-dim: #ffb95f;
+  --color-on-tertiary-fixed: #2a1700;
+  --color-on-tertiary-fixed-variant: #653e00;
+  --color-background: #faf8ff;
+  --color-on-background: #131b2e;
+  --color-surface-variant: #dae2fd;
+
+  /* Fontes */
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-data-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-headline-xl: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-headline-lg: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-headline-sm: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body-lg: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body-md: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body-sm: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-label-md: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-label-sm: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  /* Escala Tipográfica (text-headline-xl, text-headline-lg, etc.) */
+  --text-headline-xl: 2rem;
+  --text-headline-xl--line-height: 2.5rem;
+  --text-headline-xl--letter-spacing: -0.02em;
+  --text-headline-xl--font-weight: 700;
+
+  --text-headline-lg: 1.5rem;
+  --text-headline-lg--line-height: 2rem;
+  --text-headline-lg--letter-spacing: -0.015em;
+  --text-headline-lg--font-weight: 600;
+
+  --text-headline-sm: 1.125rem;
+  --text-headline-sm--line-height: 1.625rem;
+  --text-headline-sm--letter-spacing: -0.01em;
+  --text-headline-sm--font-weight: 600;
+
+  --text-body-lg: 1rem;
+  --text-body-lg--line-height: 1.5rem;
+  --text-body-lg--letter-spacing: 0em;
+  --text-body-lg--font-weight: 400;
+
+  --text-body-md: 0.875rem;
+  --text-body-md--line-height: 1.25rem;
+  --text-body-md--letter-spacing: 0em;
+  --text-body-md--font-weight: 400;
+
+  --text-body-sm: 0.75rem;
+  --text-body-sm--line-height: 1rem;
+  --text-body-sm--letter-spacing: 0.01em;
+  --text-body-sm--font-weight: 400;
+
+  --text-label-md: 0.8125rem;
+  --text-label-md--line-height: 1.125rem;
+  --text-label-md--letter-spacing: 0.01em;
+  --text-label-md--font-weight: 500;
+
+  --text-label-sm: 0.6875rem;
+  --text-label-sm--line-height: 0.875rem;
+  --text-label-sm--letter-spacing: 0.04em;
+  --text-label-sm--font-weight: 600;
+
+  --text-data-mono: 0.8125rem;
+  --text-data-mono--line-height: 1.125rem;
+  --text-data-mono--letter-spacing: -0.01em;
+  --text-data-mono--font-weight: 500;
+
+  /* Espaçamento nomeado usado nos mockups (p-space-md, gap-gutter…) */
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 1rem;
+  --spacing-space-lg: 1.5rem;
+  --spacing-space-xl: 2rem;
+  --spacing-gutter: 1rem;
+  --spacing-gutter-desktop: 1.5rem;
+  --spacing-margin: 1rem;
+  --spacing-margin-desktop: 2rem;
+
+  /* Raios (D4: DEFAULT 0.25rem, lg 0.5rem, xl 0.75rem) */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+}
+
+/* Utilitário adicional para manter paridade com classes rounded dos mockups Tailwind v3 */
+@utility rounded {
+  border-radius: 0.25rem;
+}
+
+/* Convivência com estilos legados durante a migração tela a tela (D1) */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --text: #3f4850;
+  --text-h: #131b2e;
+  --bg: #faf8ff;
+  --border: #bfc7d2;
+  --code-bg: #eaedff;
+  --accent: #006194;
+  --accent-bg: rgba(0, 97, 148, 0.1);
+  --accent-border: rgba(0, 97, 148, 0.5);
+  --shadow: 0 1px 2px 0 rgb(15 23 42 / 0.04);
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --heading: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
+  color: var(--color-on-surface);
+  background: var(--color-background);
+  font-family: var(--font-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  width: 100%;
   min-height: 100svh;
   display: flex;
   flex-direction: column;
@@ -64,48 +166,6 @@
 
 body {
   margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+  background-color: var(--color-background);
+  color: var(--color-on-surface);
 }

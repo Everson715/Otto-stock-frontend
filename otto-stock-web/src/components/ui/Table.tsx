@@ -2,9 +2,11 @@ import React from 'react';
 import './ui.css';
 import { Inbox } from 'lucide-react';
 
-interface Column<T> {
+export interface Column<T> {
   header: string;
   accessor: keyof T | ((item: T) => React.ReactNode);
+  align?: 'left' | 'right' | 'center';
+  className?: string;
 }
 
 interface TableProps<T> {
@@ -14,44 +16,74 @@ interface TableProps<T> {
   emptyMessage?: React.ReactNode;
 }
 
+const alignClasses: Record<NonNullable<Column<unknown>['align']>, string> = {
+  left: 'text-left',
+  right: 'text-right font-data-mono tabular-nums',
+  center: 'text-center',
+};
+
 export function Table<T>({ columns, data, keyExtractor, emptyMessage }: TableProps<T>) {
   return (
-    <div className="table-container">
-      <table className="table">
+    <div className="w-full overflow-x-auto bg-surface-container-lowest rounded-xl border border-outline-variant/40 shadow-[0_1px_2px_0_rgb(15_23_42/0.04)]">
+      <table className="w-full border-collapse text-left">
         <thead>
-          <tr>
+          <tr className="bg-surface-container-low/70 border-b border-outline-variant/40">
             {columns.map((col, idx) => (
-              <th key={idx}>{col.header}</th>
+              <th
+                key={idx}
+                className={`px-space-md py-3 text-label-sm uppercase tracking-wider text-outline font-semibold ${
+                  alignClasses[col.align || 'left']
+                } ${col.className || ''}`}
+              >
+                {col.header}
+              </th>
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-outline-variant/25">
           {data.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
+              <td
+                colSpan={columns.length}
+                className="px-space-md py-10 text-center"
+              >
                 {emptyMessage ? (
                   typeof emptyMessage === 'string' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: '#6b7280' }}>
-                      <Inbox className="size-8 text-gray-400" />
-                      <span style={{ fontWeight: 500, fontSize: '0.925rem' }}>{emptyMessage}</span>
+                    <div className="flex flex-col items-center justify-center gap-2 text-on-surface-variant">
+                      <Inbox className="size-8 text-outline" />
+                      <span className="text-body-md font-medium text-on-surface">
+                        {emptyMessage}
+                      </span>
                     </div>
                   ) : (
                     emptyMessage
                   )
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: '#6b7280' }}>
-                    <Inbox className="size-8 text-gray-400" />
-                    <span style={{ fontWeight: 500, fontSize: '0.925rem' }}>Nenhum registro encontrado</span>
-                    <span className="text-xs text-gray-400">Verifique os filtros aplicados ou cadastre um novo item para iniciar.</span>
+                  <div className="flex flex-col items-center justify-center gap-2 text-on-surface-variant">
+                    <Inbox className="size-8 text-outline" />
+                    <span className="text-body-md font-medium text-on-surface">
+                      Nenhum registro encontrado
+                    </span>
+                    <span className="text-body-sm text-outline">
+                      Verifique os filtros aplicados ou cadastre um novo item para iniciar.
+                    </span>
                   </div>
                 )}
               </td>
             </tr>
           ) : (
             data.map((item) => (
-              <tr key={keyExtractor(item)}>
+              <tr
+                key={keyExtractor(item)}
+                className="hover:bg-surface-container-low/50 transition-colors"
+              >
                 {columns.map((col, idx) => (
-                  <td key={idx}>
+                  <td
+                    key={idx}
+                    className={`px-space-md py-3.5 text-body-md text-on-surface ${
+                      alignClasses[col.align || 'left']
+                    } ${col.className || ''}`}
+                  >
                     {typeof col.accessor === 'function'
                       ? col.accessor(item)
                       : (item[col.accessor] as React.ReactNode)}
