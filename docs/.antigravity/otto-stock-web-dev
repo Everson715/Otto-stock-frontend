@@ -1,40 +1,84 @@
 ---
 name: otto-stock-web-dev
-description: Orquestra o desenvolvimento de novas funcionalidades, componentes e integrações no frontend do Otto Stock. Use quando o usuário pedir para criar, alterar telas, formulários ou componentes em React/Vite no frontend.
+description: Orquestra o desenvolvimento de funcionalidades, telas, componentes e integrações com a API no frontend do Otto Stock (otto-stock-web, React 19 + Vite + TypeScript). Use SEMPRE que o usuário pedir para criar ou alterar páginas, modais, drawers, formulários, tabelas, gráficos, rotas protegidas (RBAC), consumo de endpoints, tipos do contrato da API ou estilização no repositório frontend, mesmo que ele não mencione "skill" ou "frontend" explicitamente. Também use ao registrar lacunas de contrato que dependem do backend (PENDENCIAS_BACKEND.md).
 ---
 # Otto Stock Web - Orquestrador de Frontend
 
-Este agente atua como um engenheiro de software frontend sênior desenvolvendo interfaces, componentes e integrações para o sistema Otto Stock Web.
+Atue como engenheiro de software frontend sênior no repositório `otto-stock-web` (sistema de gestão clínica e estoque). Entregue código pequeno, tipado e consistente com os padrões existentes; antes de criar algo novo, procure um componente, hook ou função de API equivalente já existente e reutilize.
 
-## Quando Usar
-- O usuário pede para criar ou alterar uma página, modal, drawer ou componente no repositório frontend.
-- O usuário solicita a integração de uma nova rota da API com a interface do usuário.
-- Ajustes de permissões de rotas (RBAC), formulários e validações visuais.
+## Stack
 
-## Passos do Pipeline
+- React 19 + TypeScript + Vite
+- React Router v7
+- Axios (instância única em `src/api/api.ts`)
+- React Hook Form + Zod v4 (`@hookform/resolvers`)
+- Tailwind CSS v4 com o design **Clinical Precision** (tokens em `src/index.css`)
+- Lucide React (ícones) e Sonner (toasts)
 
-1. **Análise de Requisitos e Permissões (RBAC)**
-   - Identifique em qual página ou componente a funcionalidade será inserida.
-   - Verifique a matriz `ROUTE_ROLES` (`src/types/auth.ts`) para garantir que os perfis corretos (ADMIN, GESTOR, ESTOQUISTA, ATENDENTE) tenham acesso à nova rota ou ação.
+## Quando usar
 
-2. **Tipagem e Integração (API & Types)**
-   - Defina as interfaces TypeScript (`src/types/`) refletindo o contrato atualizado da API.
-   - Atualize ou crie funções de requisição usando a instância configurada do Axios (`src/api/api.ts`).
+- Criar ou alterar página, modal, drawer, formulário, tabela ou componente.
+- Integrar um endpoint novo ou alterado da API com a interface.
+- Ajustar permissões de rota ou de ação (RBAC), validações e estados visuais.
+- Registrar no `PENDENCIAS_BACKEND.md` algo que o frontend precisa do backend.
 
-3. **Desenvolvimento de Formulários e Validação**
-   - Utilize `React Hook Form` para gerenciamento de estado dos formulários.
-   - Escreva schemas de validação estritos com `Zod v4` e integre-os via `@hookform/resolvers`.
+## Pipeline
 
-4. **Desenvolvimento de UI e Estilização**
-   - Crie/atualize componentes na pasta `src/components/` (ex: `ui/`, `landing/`) ou páginas em `src/pages/`.
-   - Utilize `Tailwind CSS v4` respeitando os tokens clínicos já definidos no sistema (`index.css`).
-   - Use `Lucide React` para ícones e `Sonner` para os toasts de feedback (sucesso/erro).
+### 1. Requisitos e permissões (RBAC)
 
-5. **Testes e Validação Visual**
-   - Garanta que a interface trate corretamente os estados de "Loading", "Error" (via `ErrorBoundary`) e "EmptyState".
-   - Valide se o alerta global da `Navbar` ou proteções de rotas (`ProtectedRoute.tsx`) foram respeitados.
+- Identifique a página/componente onde a funcionalidade entra e leia o código vizinho antes de escrever.
+- Confira `ROUTE_ROLES` em `src/types/auth.ts`: os perfis ADMIN, GESTOR, ATENDENTE e ESTOQUISTA devem ter acesso apenas ao que lhes cabe, tanto na rota quanto em botões e ações.
+- Rotas novas passam por `ProtectedRoute.tsx`; atualize a matriz e a navegação (`Navbar`) juntas.
+
+### 2. Tipagem e integração
+
+- Declare interfaces em `src/types/` refletindo exatamente o contrato da API; não use `any`.
+- Crie ou atualize as funções de requisição em `src/api/`, sempre sobre a instância de `src/api/api.ts`.
+- Em desenvolvimento a API é acessada via `/api` (Nginx na porta 80 faz o proxy; Vite dev em 5173). Nunca fixe host ou porta no código.
+- Se o contrato necessário ainda não existe no backend, não invente campos: implemente do lado seguro (ver "Contratos e backend") e registre a pendência.
+
+### 3. Formulários e validação
+
+- Estado de formulário com React Hook Form; schemas estritos com Zod v4 integrados via `@hookform/resolvers`.
+- Mensagens de erro em português, junto ao campo; toast (Sonner) para sucesso/erro da requisição.
+- Campos opcionais do backend (ex.: `String?`) devem aceitar vazio e enviar `null`/omitir conforme o contrato, sem forçar valor padrão.
+
+### 4. UI e estilização
+
+- Componentes reutilizáveis em `src/components/` (`ui/`, `landing/`, etc.); páginas em `src/pages/`.
+- Tailwind v4 com os tokens do Clinical Precision definidos em `index.css`; não crie cores ou espaçamentos avulsos quando já existir token.
+- Evite CSS inline e CSS novo fora do Tailwind, salvo necessidade comprovada.
+- Ícones só com Lucide; feedback só com Sonner.
+- Acessibilidade básica: labels associados, foco visível, botões com `aria-label` quando só tiverem ícone.
+
+### 5. Estados e validação visual
+
+- Toda tela que consome API trata **Loading**, **Error** (via `ErrorBoundary` ou estado de erro local) e **EmptyState**.
+- Listas grandes: preveja paginação/filtros em vez de carregar tudo.
+- Verifique o alerta global da `Navbar` e as proteções de `ProtectedRoute.tsx`.
+- Rode `npm run build` (inclui checagem de tipos) e o linter antes de concluir; se houver testes no repositório, rode-os.
+
+## Contratos e backend
+
+Quando uma funcionalidade depende de algo que o backend ainda não oferece:
+
+1. Implemente o frontend de forma retrocompatível, tolerando o formato atual.
+2. Registre a lacuna em `PENDENCIAS_BACKEND.md` (campo, endpoint, comportamento esperado, impacto no frontend). O arquivo fica na raiz do repositório, a menos que o time o mova para `docs/`; confirme o local atual antes de editar.
+3. Ao consumir endpoints paginados, aceite as duas formas de resposta (lista simples e objeto paginado) durante a transição: backend retrocompatível → frontend → backend definitivo.
+
+Decisões de contrato já acordadas (confira em `PENDENCIAS_BACKEND.md` se mudaram):
+
+- **Médico**: `especialidade` é `String?` livre, não enum.
+- **Insumo**: `unidade` é enum com valor `NAO_INFORMADA` para registros legados; não assuma "UN" como padrão e exiba "—" quando for `NAO_INFORMADA`.
+- **Gráfico de movimentações** (`/relatorios/movimentacoes-grafico`): parâmetro de dias entre 1 e 90; fuso fixo `America/Sao_Paulo`.
+- **Paginação** em `/pacientes` e `/medicos`.
+- **Filtro `?ativo=`** em `GET /insumos` e redução do over-fetching do dashboard são lacunas conhecidas do backend.
 
 ## Gotchas
-- **Sempre** use a instância do Axios pré-configurada para garantir que os interceptors de JWT e erro 401 funcionem.
-- O estado global de sessão deve ser consumido do `AuthContext.tsx`.
-- Evite CSS inline; priorize sempre o uso de Tailwind v4.
+
+- **Sempre** use a instância pré-configurada do Axios (`src/api/api.ts`): ela carrega os interceptors de JWT e o tratamento de 401. Nunca use `fetch` nem crie outra instância.
+- O estado global de sessão vem do `AuthContext.tsx`; não duplique usuário/token em estado local ou `localStorage` por conta própria.
+- Rate limit do backend: login 5/min por IP + e-mail e limite geral por usuário (600/15min em produção). Evite disparar requisições em loop ou por tecla digitada; use debounce em buscas e não refaça fetch sem necessidade.
+- Dados de pacientes são sensíveis (LGPD): não registre dados pessoais em `console.log`, toasts ou mensagens de erro, e mostre apenas o necessário em cada perfil.
+- Evite CSS inline; priorize Tailwind v4.
+- Não commite segredos nem `.env` com valores reais.
