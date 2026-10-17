@@ -9,7 +9,7 @@ interface AuthContextType {
   perfil: Perfil | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, senha: string) => Promise<void>;
+  login: (email: string, senha: string) => Promise<Usuario>;
   logout: () => void;
 }
 
@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  async function login(email: string, senha: string) {
+  async function login(email: string, senha: string): Promise<Usuario> {
     const response = await api.post<LoginResponse>('/auth/login', { email, senha });
     const { usuario: rawUser, token: jwtToken } = response.data;
     const normalizedPerfil: Perfil =
@@ -64,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setToken(jwtToken);
     setUsuario(user);
+    return user;
   }
 
   function logout() {

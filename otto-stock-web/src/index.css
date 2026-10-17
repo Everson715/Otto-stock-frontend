@@ -131,41 +131,43 @@
   border-radius: 0.25rem;
 }
 
-/* Convivência com estilos legados durante a migração tela a tela (D1) */
-:root {
-  --text: #3f4850;
-  --text-h: #131b2e;
-  --bg: #faf8ff;
-  --border: #bfc7d2;
-  --code-bg: #eaedff;
-  --accent: #006194;
-  --accent-bg: rgba(0, 97, 148, 0.1);
-  --accent-border: rgba(0, 97, 148, 0.5);
-  --shadow: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+@layer base {
+  /* Convivência com estilos legados durante a migração tela a tela (D1) */
+  :root {
+    --text: #3f4850;
+    --text-h: #131b2e;
+    --bg: #faf8ff;
+    --border: #bfc7d2;
+    --code-bg: #eaedff;
+    --accent: #006194;
+    --accent-bg: rgba(0, 97, 148, 0.1);
+    --accent-border: rgba(0, 97, 148, 0.5);
+    --shadow: 0 1px 2px 0 rgb(15 23 42 / 0.04);
 
-  --sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --heading: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, monospace;
+    --sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    --heading: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
 
-  color: var(--color-on-surface);
-  background: var(--color-background);
-  font-family: var(--font-sans);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+    color: var(--color-on-surface);
+    background: var(--color-background);
+    font-family: var(--font-sans);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-#root {
-  width: 100%;
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
+  #root {
+    width: 100%;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
 
-body {
-  margin: 0;
-  background-color: var(--color-background);
-  color: var(--color-on-surface);
+  body {
+    margin: 0;
+    background-color: var(--color-background);
+    color: var(--color-on-surface);
+  }
 }

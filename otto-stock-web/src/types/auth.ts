@@ -42,3 +42,15 @@ export function hasRouteAccess(
   if (perfil === 'ADMIN') return true;
   return ROUTE_ROLES[route].includes(perfil);
 }
+
+export function getDefaultRouteForPerfil(
+  perfil: Perfil | null | undefined
+): AppRoutePath {
+  if (!perfil || hasRouteAccess(perfil, '/')) {
+    return '/';
+  }
+  const availableRoute = (Object.keys(ROUTE_ROLES) as AppRoutePath[]).find((route) =>
+    hasRouteAccess(perfil, route)
+  );
+  return availableRoute || '/';
+}

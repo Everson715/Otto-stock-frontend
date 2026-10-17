@@ -1,121 +1,90 @@
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { toast } from 'sonner';
-import { AlertCircle, LogIn } from 'lucide-react';
+import { useLocation, Navigate } from 'react-router-dom';
+import { Package } from 'lucide-react';
+import pkg from '../../package.json';
 import { useAuth } from '../contexts/AuthContext';
-import { Input } from '../components/ui/Input';
-import { Button } from '../components/ui/Button';
-import './Login.css';
+import {
+  getDefaultRouteForPerfil,
+  hasRouteAccess,
+  ROUTE_ROLES,
+  type AppRoutePath,
+} from '../types/auth';
+import { LoginBrandPanel } from '../components/LoginBrandPanel';
+import { LoginForm } from '../components/LoginForm';
 
-const loginSchema = z.object({
-  email: z.string().min(1, 'O e-mail é obrigatório').email('Formato de e-mail inválido'),
-  senha: z.string().min(1, 'A senha é obrigatória'),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || pkg.version;
 
 export function Login() {
-  const { login, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const { isAuthenticated, perfil } = useAuth();
   const location = useLocation();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const currentYear = new Date().getFullYear();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      senha: '',
-    },
-  });
-
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
+  const rawFrom = (location.state as { from?: { pathname: string } } | null)
+    ?.from?.pathname;
 
   if (isAuthenticated) {
-    return <Navigate to={from} replace />;
-  }
+    let targetRoute: string = getDefaultRouteForPerfil(perfil);
+    if (rawFrom && rawFrom !== '/login' && rawFrom !== '/landing') {
+      const matchedRouteKey = (Object.keys(ROUTE_ROLES) as AppRoutePath[]).find(
+        (routeKey) =>
+          routeKey === rawFrom ||
+          (routeKey !== '/' && rawFrom.startsWith(routeKey))
+      );
 
-  async function onSubmit(data: LoginFormData) {
-    setErrorMessage(null);
-    try {
-      await login(data.email, data.senha);
-      toast.success('Login realizado com sucesso!');
-      navigate(from, { replace: true });
-    } catch (err: unknown) {
-      let message = 'Credenciais inválidas ou usuário inativo';
-      if (err && typeof err === 'object' && 'response' in err) {
-        const axiosErr = err as { response?: { status?: number; data?: { message?: string; error?: string | boolean } } };
-        if (axiosErr.response?.status === 429) {
-          message = 'Muitas tentativas de login. Tente novamente mais tarde.';
-        } else if (axiosErr.response?.data?.message) {
-          message = axiosErr.response.data.message;
-        } else if (typeof axiosErr.response?.data?.error === 'string') {
-          message = axiosErr.response.data.error;
-        }
-      } else if (err instanceof Error) {
-        message = err.message;
+      if (!matchedRouteKey || hasRouteAccess(perfil, matchedRouteKey)) {
+        targetRoute = rawFrom;
       }
-      setErrorMessage(message);
-      toast.error(message);
     }
+    return <Navigate to={targetRoute} replace />;
   }
 
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
-          <div className="navbar-logo" style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
-            <strong>Otto</strong>Stock
+    <div className="min-h-svh w-full flex flex-col bg-surface-container-low text-on-surface overflow-x-hidden">
+      {/* Corpo principal: 2 colunas em desktop (58% / 42%), 1 coluna centralizada abaixo de lg */}
+      <div className="flex-1 flex flex-col lg:flex-row w-full">
+        <LoginBrandPanel />
+
+        <div className="flex-1 lg:w-[42%] lg:flex-none flex flex-col items-center justify-center px-4 py-8 sm:px-6 sm:py-12 bg-surface-container-low">
+          {/* Logo compacta no topo para mobile / tablet (< lg) */}
+          <div className="flex lg:hidden items-center gap-2.5 mb-6">
+            <div className="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center shadow-2xs shrink-0">
+              <Package className="size-5" aria-hidden="true" />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="font-sans text-lg font-extrabold tracking-tight leading-none">
+                <span className="text-on-surface">Otto</span>
+                <span className="text-primary">Stock</span>
+              </span>
+              <span className="font-sans text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant leading-none mt-0.5">
+                GESTÃO CLÍNICA &amp; ESTOQUE
+              </span>
+            </div>
           </div>
-          <h1>Acesso ao Sistema</h1>
-          <p>Informe suas credenciais para continuar</p>
+
+          <LoginForm fromPath={rawFrom} />
         </div>
-
-        {errorMessage && (
-          <div className="login-error-banner" role="alert" style={{ marginBottom: '1.25rem' }}>
-            <AlertCircle className="size-4 shrink-0" />
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit(onSubmit)} className="login-form">
-          <Input
-            label="E-mail"
-            type="email"
-            placeholder="usuario@clinica.com"
-            autoComplete="email"
-            disabled={isSubmitting}
-            error={errors.email?.message}
-            {...register('email')}
-          />
-
-          <Input
-            label="Senha"
-            type="password"
-            placeholder="••••••••"
-            autoComplete="current-password"
-            disabled={isSubmitting}
-            error={errors.senha?.message}
-            {...register('senha')}
-          />
-
-          <Button
-            type="submit"
-            isLoading={isSubmitting}
-            leftIcon={<LogIn className="size-4" />}
-            className="w-full"
-            style={{ marginTop: '0.5rem' }}
-          >
-            {isSubmitting ? 'Entrando...' : 'Entrar'}
-          </Button>
-        </form>
       </div>
+
+      {/* Barra de rodapé da página (fundo azul-marinho muito escuro, largura total) */}
+      <footer className="w-full bg-on-primary-fixed text-inverse-on-surface border-t border-inverse-surface px-4 py-3.5 sm:px-8">
+        <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row items-center lg:justify-between gap-2 text-center lg:text-left text-body-sm">
+          <div className="leading-snug">
+            <span className="font-semibold text-on-primary">
+              OttoStock Clinical
+            </span>{' '}
+            <span className="text-inverse-on-surface/80">
+              — Solução Corporativa de Rastreabilidade e Gestão Hospitalar
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center lg:justify-end gap-2 text-inverse-on-surface/70 font-data-mono text-label-sm">
+            <span>Versão {APP_VERSION}</span>
+            <span aria-hidden="true">•</span>
+            <span className="font-sans">
+              Todos os direitos reservados © {currentYear}
+            </span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

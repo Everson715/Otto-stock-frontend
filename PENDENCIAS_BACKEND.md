@@ -229,3 +229,30 @@ Este documento registra as discrepâncias e ausências de endpoints ou campos en
 - **Critérios de Aceite:**
   - [ ] `GET /relatorios/dashboard` inclui `nome` em cada item de `examesMaisRealizados` e o objeto `atendimentosPorStatus` com `emAtendimento`, `finalizados`, `cancelados`, `finalizadosHoje` e `protocolosDistintosHoje`.
   - [ ] `Home.tsx` passa a consumir os contadores diretamente de `GET /relatorios/dashboard`, eliminando as chamadas 6 (`GET /atendimentos?status=FINALIZADO&limit=1`) e 7 (`GET /atendimentos?status=FINALIZADO&startDate=...&limit=100`) e mantendo as chamadas a `/exames`, `/exame-insumos` e `/insumos` para a ficha técnica e o modal de finalização.
+
+---
+
+## 6. Módulo Autenticação (`/auth`)
+
+### 6.1. Duração Estendida da Sessão ("Manter conectado por 12 horas") em `POST /auth/login`
+
+- **Item faltante:** Suporte ao parâmetro booleano opcional `manterConectado` (ou `rememberMe`) em `POST /auth/login` para emissão de token JWT com expiração de `12h` (ou estratégia de *refresh token*), visto que atualmente o token possui validade fixa de `8h`.
+- **Tela dependente:** [Login](/login) (`otto-stock-web/src/pages/Login.tsx` e `otto-stock-web/src/components/LoginForm.tsx`).
+- **Prioridade:** **Baixa** — *Justificativa:* O fluxo de autenticação e os interceptors de sessão funcionam normalmente com a validade atual de 8 horas definida no backend.
+- **Dependências:** Nenhuma.
+- **Situação no Contrato da API (fato verificado em `docs/API_CONTRACT.md`):**
+  - Na Seção 2.3, `POST /auth/login` recebe exclusivamente `{ email, senha }`.
+  - Na Seção 2.4, a validade do token JWT é documentada como fixa em `8 horas` (`expiresIn: "8h"`).
+- **Proposta mínima para o Backend (sugestão a validar no repositório do backend):**
+  - Aceitar o campo opcional `manterConectado?: boolean` no payload de `POST /auth/login` e ajustar `expiresIn` para `"12h"` quando `manterConectado === true` (mantendo `"8h"` como padrão).
+- **Tratamento no Frontend (fato verificado no repositório):**
+  - Em `otto-stock-web/src/components/LoginForm.tsx`, o checkbox `"Manter conectado por 12 horas"` faz parte do formulário de login, mas `AuthContext.login(email, senha)` envia apenas `{ email, senha }` conforme o contrato atual de `POST /auth/login`, sem simular expiração falsa no cliente.
+
+### 6.2. Fluxo de Recuperação de Senha ("Esqueceu a senha?")
+
+- **Item faltante:** Endpoints de solicitação e redefinição de senha (ex.: `POST /auth/forgot-password` e `POST /auth/reset-password`) ou abertura de chamado de redefinição para o administrador.
+- **Tela dependente:** [Login](/login) (`otto-stock-web/src/components/LoginForm.tsx`).
+- **Prioridade:** **Baixa** — *Justificativa:* Em ambiente clínico controlado, a gestão de credenciais e redefinição de senhas pode ser realizada diretamente pelo perfil `ADMIN` via `PUT /usuarios/:id` na tela de [Usuários](/usuarios) (`otto-stock-web/src/pages/Usuarios.tsx`).
+- **Tratamento no Frontend (fato verificado no repositório):**
+  - Ao acionar `"Esqueceu a senha?"` em `LoginForm.tsx`, a interface exibe um *toast* informativo (`Sonner`) orientando o colaborador a contatar o Suporte de TI ou o Administrador da Clínica, sem expor telas ou rotas inexistentes.
+
