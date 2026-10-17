@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 
@@ -20,20 +21,42 @@ import { EstoqueSaldo } from './pages/EstoqueSaldo';
 import { Movimentacoes } from './pages/Movimentacoes';
 import { NotFound } from './pages/NotFound';
 
+const Landing = lazy(() => import('./pages/Landing'));
+
 function AppLayout() {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
-  const showNavbar = isAuthenticated && location.pathname !== '/login';
+  const isLandingRoute = location.pathname === '/landing';
+  const showNavbar =
+    isAuthenticated && location.pathname !== '/login' && !isLandingRoute;
+  const WrapperTag = isLandingRoute ? 'div' : 'main';
 
   return (
     <>
       <Navbar />
-      <main
+      <WrapperTag
         className={`w-full flex-1 bg-background ${
           showNavbar ? 'pt-16' : ''
         }`}
       >
         <Routes>
+          {/* Rota pública da Landing Page */}
+          <Route
+            path="/landing"
+            element={
+              <Suspense
+                fallback={
+                  <div
+                    className="min-h-svh w-full bg-background"
+                    aria-busy="true"
+                  />
+                }
+              >
+                <Landing />
+              </Suspense>
+            }
+          />
+
           {/* Rota pública de autenticação */}
           <Route path="/login" element={<Login />} />
 
@@ -140,7 +163,7 @@ function AppLayout() {
           {/* Rota 404 Catch-All */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </main>
+      </WrapperTag>
     </>
   );
 }

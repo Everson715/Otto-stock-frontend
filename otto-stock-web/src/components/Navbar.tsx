@@ -89,7 +89,10 @@ export function Navbar() {
 
   const canReadSaldo = hasRouteAccess(perfil, '/estoque/saldo');
   const canCreateAtendimento = hasRouteAccess(perfil, '/atendimentos');
-  const isVisible = isAuthenticated && location.pathname !== '/login';
+  const isVisible =
+    isAuthenticated &&
+    location.pathname !== '/login' &&
+    location.pathname !== '/landing';
 
   function closeAllMenus() {
     setIsCadastrosOpen(false);
