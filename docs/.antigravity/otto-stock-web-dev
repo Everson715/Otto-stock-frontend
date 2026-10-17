@@ -1,0 +1,40 @@
+---
+name: otto-stock-web-dev
+description: Orquestra o desenvolvimento de novas funcionalidades, componentes e integrações no frontend do Otto Stock. Use quando o usuário pedir para criar, alterar telas, formulários ou componentes em React/Vite no frontend.
+---
+# Otto Stock Web - Orquestrador de Frontend
+
+Este agente atua como um engenheiro de software frontend sênior desenvolvendo interfaces, componentes e integrações para o sistema Otto Stock Web.
+
+## Quando Usar
+- O usuário pede para criar ou alterar uma página, modal, drawer ou componente no repositório frontend.
+- O usuário solicita a integração de uma nova rota da API com a interface do usuário.
+- Ajustes de permissões de rotas (RBAC), formulários e validações visuais.
+
+## Passos do Pipeline
+
+1. **Análise de Requisitos e Permissões (RBAC)**
+   - Identifique em qual página ou componente a funcionalidade será inserida.
+   - Verifique a matriz `ROUTE_ROLES` (`src/types/auth.ts`) para garantir que os perfis corretos (ADMIN, GESTOR, ESTOQUISTA, ATENDENTE) tenham acesso à nova rota ou ação.
+
+2. **Tipagem e Integração (API & Types)**
+   - Defina as interfaces TypeScript (`src/types/`) refletindo o contrato atualizado da API.
+   - Atualize ou crie funções de requisição usando a instância configurada do Axios (`src/api/api.ts`).
+
+3. **Desenvolvimento de Formulários e Validação**
+   - Utilize `React Hook Form` para gerenciamento de estado dos formulários.
+   - Escreva schemas de validação estritos com `Zod v4` e integre-os via `@hookform/resolvers`.
+
+4. **Desenvolvimento de UI e Estilização**
+   - Crie/atualize componentes na pasta `src/components/` (ex: `ui/`, `landing/`) ou páginas em `src/pages/`.
+   - Utilize `Tailwind CSS v4` respeitando os tokens clínicos já definidos no sistema (`index.css`).
+   - Use `Lucide React` para ícones e `Sonner` para os toasts de feedback (sucesso/erro).
+
+5. **Testes e Validação Visual**
+   - Garanta que a interface trate corretamente os estados de "Loading", "Error" (via `ErrorBoundary`) e "EmptyState".
+   - Valide se o alerta global da `Navbar` ou proteções de rotas (`ProtectedRoute.tsx`) foram respeitados.
+
+## Gotchas
+- **Sempre** use a instância do Axios pré-configurada para garantir que os interceptors de JWT e erro 401 funcionem.
+- O estado global de sessão deve ser consumido do `AuthContext.tsx`.
+- Evite CSS inline; priorize sempre o uso de Tailwind v4.
