@@ -12,6 +12,7 @@ import {
   Stethoscope,
   User as UserIcon,
   UserCheck,
+  UserPlus,
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -72,6 +73,12 @@ const CADASTROS_MENU_ITEMS: CadastroRouteConfig[] = [
     description: 'Vínculo de insumos por exame',
     icon: <Link2 size={16} className="text-primary shrink-0" />,
   },
+  {
+    to: '/usuarios',
+    label: 'Usuários (Registro)',
+    description: 'Registro de contas e perfis (ADMIN)',
+    icon: <UserPlus size={16} className="text-primary shrink-0" />,
+  },
 ];
 
 export function Navbar() {
@@ -89,6 +96,7 @@ export function Navbar() {
 
   const canReadSaldo = hasRouteAccess(perfil, '/estoque/saldo');
   const canCreateAtendimento = hasRouteAccess(perfil, '/atendimentos');
+  const canManageUsuarios = hasRouteAccess(perfil, '/usuarios');
   const isVisible =
     isAuthenticated &&
     location.pathname !== '/login' &&
@@ -172,9 +180,12 @@ export function Navbar() {
     hasRouteAccess(perfil, item.to)
   );
 
-  const isCadastroRouteActive = ['/pacientes', '/medicos', '/exame-insumos'].some(
-    (path) => location.pathname.startsWith(path)
-  );
+  const isCadastroRouteActive = [
+    '/pacientes',
+    '/medicos',
+    '/exame-insumos',
+    '/usuarios',
+  ].some((path) => location.pathname.startsWith(path));
 
   function handleLogout() {
     closeAllMenus();
@@ -372,7 +383,7 @@ export function Navbar() {
             {isUserMenuOpen && (
               <div
                 role="menu"
-                className="absolute right-0 mt-1.5 w-56 rounded-xl bg-surface-container-lowest border border-outline-variant/40 p-1.5 shadow-[0_4px_6px_-1px_rgb(15_23_42/0.07),0_2px_4px_-2px_rgb(15_23_42/0.05)] z-50 text-left"
+                className="absolute right-0 mt-1.5 w-60 rounded-xl bg-surface-container-lowest border border-outline-variant/40 p-1.5 shadow-[0_4px_6px_-1px_rgb(15_23_42/0.07),0_2px_4px_-2px_rgb(15_23_42/0.05)] z-50 text-left"
               >
                 <div className="px-3 py-2 border-b border-outline-variant/30 mb-1">
                   <div className="flex items-center justify-between gap-2">
@@ -387,6 +398,21 @@ export function Navbar() {
                     {usuario?.email}
                   </p>
                 </div>
+
+                {canManageUsuarios && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      closeAllMenus();
+                      navigate('/usuarios?novo=1');
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-label-md text-on-surface hover:bg-surface-container-low transition-colors cursor-pointer font-medium mb-0.5"
+                  >
+                    <UserPlus size={15} className="text-primary" />
+                    <span>Registrar Novo Usuário</span>
+                  </button>
+                )}
 
                 <button
                   type="button"

@@ -115,12 +115,6 @@ export function Login() {
             {isSubmitting ? 'Entrando...' : 'Entrar'}
           </Button>
         </form>
-
-        <div className="login-hint">
-          <strong>Credenciais de teste (Contrato API):</strong>
-          <br />
-          E-mail: <code>admin@clinica.com</code> | Senha: <code>admin123</code>
-        </div>
       </div>
     </div>
   );

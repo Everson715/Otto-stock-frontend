@@ -19,6 +19,7 @@ import { ExameInsumos } from './pages/ExameInsumos';
 import { Estoque } from './pages/Estoque';
 import { EstoqueSaldo } from './pages/EstoqueSaldo';
 import { Movimentacoes } from './pages/Movimentacoes';
+import { Usuarios } from './pages/Usuarios';
 import { NotFound } from './pages/NotFound';
 
 const Landing = lazy(() => import('./pages/Landing'));
@@ -156,6 +157,16 @@ function AppLayout() {
             element={
               <ProtectedRoute allowedRoles={ROUTE_ROLES['/estoque/movimentacoes']}>
                 <Movimentacoes />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Módulo Usuários / Registro de Usuários (Exclusivo ADMIN) */}
+          <Route
+            path="/usuarios"
+            element={
+              <ProtectedRoute allowedRoles={ROUTE_ROLES['/usuarios']}>
+                <Usuarios />
               </ProtectedRoute>
             }
           />

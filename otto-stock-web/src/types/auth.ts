@@ -5,6 +5,7 @@ export interface Usuario {
   nome: string;
   email: string;
   perfil: Perfil;
+  perfis?: Perfil[];
 }
 
 export interface LoginResponse {
@@ -28,6 +29,7 @@ export const ROUTE_ROLES = {
   '/estoque': ['ADMIN', 'ESTOQUISTA'] as Perfil[],
   '/estoque/saldo': ['ADMIN', 'ESTOQUISTA', 'GESTOR'] as Perfil[],
   '/estoque/movimentacoes': ['ADMIN', 'ESTOQUISTA', 'GESTOR'] as Perfil[],
+  '/usuarios': ['ADMIN'] as Perfil[],
 } as const;
 
 export type AppRoutePath = keyof typeof ROUTE_ROLES;

@@ -27,6 +27,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (storedToken && storedUser) {
         const parsedUser = JSON.parse(storedUser) as Usuario;
+        if (!parsedUser.perfil && Array.isArray(parsedUser.perfis) && parsedUser.perfis.length > 0) {
+          parsedUser.perfil = parsedUser.perfis.includes('ADMIN')
+            ? 'ADMIN'
+            : parsedUser.perfis[0];
+        }
         setToken(storedToken);
         setUsuario(parsedUser);
       }
@@ -42,7 +47,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function login(email: string, senha: string) {
     const response = await api.post<LoginResponse>('/auth/login', { email, senha });
-    const { usuario: user, token: jwtToken } = response.data;
+    const { usuario: rawUser, token: jwtToken } = response.data;
+    const normalizedPerfil: Perfil =
+      rawUser.perfis?.includes('ADMIN')
+        ? 'ADMIN'
+        : rawUser.perfil || rawUser.perfis?.[0] || 'ATENDENTE';
+
+    const user: Usuario = {
+      ...rawUser,
+      perfil: normalizedPerfil,
+      perfis: rawUser.perfis || [normalizedPerfil],
+    };
 
     localStorage.setItem('token', jwtToken);
     localStorage.setItem('usuario', JSON.stringify(user));
@@ -61,7 +76,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value: AuthContextType = {
     usuario,
     token,
-    perfil: usuario?.perfil || null,
+    perfil:
+      usuario?.perfis?.includes('ADMIN')
+        ? 'ADMIN'
+        : usuario?.perfil || usuario?.perfis?.[0] || null,
     isAuthenticated: Boolean(token && usuario),
     isLoading,
     login,
