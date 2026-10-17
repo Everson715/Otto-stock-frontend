@@ -1,16 +1,31 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Edit, Trash2, Eye, Stethoscope, ChevronLeft, ChevronRight, Loader2, Info } from 'lucide-react';
+import {
+  Plus,
+  Pencil,
+  Archive,
+  Eye,
+  Stethoscope,
+  Search,
+  RefreshCw,
+  CheckCircle2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import { api } from '../api/api';
 import { medicoSchema } from '../types/medico';
 import type { Medico, MedicoFormData } from '../types/medico';
+import { formatarCrm } from '../utils/format';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
-import { Table } from '../components/ui/Table';
+import { MetricCard } from '../components/ui/MetricCard';
+import { PageHeader } from '../components/ui/PageHeader';
+import { Pagination } from '../components/ui/Pagination';
+import { Skeleton } from '../components/ui/Skeleton';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import { Table, type Column } from '../components/ui/Table';
 
 export function Medicos() {
   const [medicos, setMedicos] = useState<Medico[]>([]);
@@ -23,6 +38,8 @@ export function Medicos() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedMedico, setSelectedMedico] = useState<Medico | null>(null);
+  const [medicoParaDesativar, setMedicoParaDesativar] = useState<Medico | null>(null);
+  const [isDeactivating, setIsDeactivating] = useState(false);
 
   const {
     register,
@@ -68,7 +85,7 @@ export function Medicos() {
   function handleNovo() {
     setIsEditMode(false);
     setSelectedMedico(null);
-    reset({ nome: '', crm: '', especialidade: '' });
+    reset({ nome: '', crm: '' });
     setIsModalOpen(true);
   }
 
@@ -77,7 +94,6 @@ export function Medicos() {
     setSelectedMedico(medico);
     setValue('nome', medico.nome);
     setValue('crm', medico.crm || '');
-    setValue('especialidade', '');
     setIsModalOpen(true);
   }
 
@@ -115,75 +131,143 @@ export function Medicos() {
     }
   }
 
-  async function handleDeletar(id: number) {
-    if (confirm('Tem certeza que deseja desativar este médico?')) {
-      try {
-        await api.delete(`/medicos/${id}`);
-        toast.success('Médico desativado com sucesso');
-        carregarMedicos();
-      } catch {
-        toast.error('Erro ao desativar médico');
-      }
+  async function confirmarDesativacao() {
+    if (!medicoParaDesativar) return;
+    setIsDeactivating(true);
+    try {
+      await api.delete(`/medicos/${medicoParaDesativar.id}`);
+      toast.success('Médico desativado com sucesso');
+      setMedicoParaDesativar(null);
+      carregarMedicos();
+    } catch {
+      toast.error('Erro ao desativar médico');
+    } finally {
+      setIsDeactivating(false);
     }
   }
 
-  const columns = [
-    { header: 'ID', accessor: 'id' as keyof Medico },
-    { header: 'Nome', accessor: 'nome' as keyof Medico },
+  const columns: Column<Medico>[] = [
     {
-      header: 'CRM',
-      accessor: (m: Medico) => m.crm || '-',
+      header: 'ID',
+      accessor: (m) => (
+        <span className="font-data-mono text-label-md text-outline">#{m.id}</span>
+      ),
     },
     {
-      header: 'Especialidade',
-      accessor: () => (
-        <span className="text-xs text-gray-400 italic" title="Campo pendente no backend (ver PENDENCIAS_BACKEND.md)">
-          Não cadastrada no backend
+      header: 'Profissional',
+      accessor: (m) => (
+        <span className="font-semibold text-on-surface">{m.nome}</span>
+      ),
+    },
+    {
+      header: 'Registro (CRM)',
+      accessor: (m) => (
+        <span className="font-data-mono text-body-md text-on-surface-variant">
+          {formatarCrm(m.crm)}
         </span>
       ),
     },
     {
       header: 'Status',
-      accessor: (m: Medico) => (
-        <span className={m.ativo ? 'badge-ok' : 'badge-alerta'}>
-          {m.ativo ? 'Ativo' : 'Inativo'}
-        </span>
-      ),
+      accessor: (m) =>
+        m.ativo ? (
+          <StatusBadge variant="conforme" label="Ativo" />
+        ) : (
+          <StatusBadge variant="neutro" label="Inativo" />
+        ),
     },
     {
       header: 'Ações',
-      accessor: (m: Medico) => (
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={() => handleVerDetalhes(m)} title="Ver detalhes">
-            <Eye className="size-4" />
+      align: 'right',
+      accessor: (m) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleVerDetalhes(m)}
+            title="Ver detalhes"
+          >
+            <Eye size={15} />
           </Button>
-          <Button variant="secondary" onClick={() => handleEditar(m)} title="Editar">
-            <Edit className="size-4" />
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleEditar(m)}
+            title="Editar"
+          >
+            <Pencil size={15} />
           </Button>
-          <Button variant="danger" onClick={() => handleDeletar(m.id)} title="Desativar">
-            <Trash2 className="size-4" />
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => setMedicoParaDesativar(m)}
+            title="Desativar"
+          >
+            <Archive size={15} />
           </Button>
         </div>
       ),
     },
   ];
 
+  const medicosComCrm = useMemo(
+    () => medicos.filter((m) => Boolean(m.crm && m.crm.trim())).length,
+    [medicos]
+  );
+
   return (
-    <div className="flex flex-col gap-4 p-4 text-left">
-      <div className="flex justify-between items-center flex-wrap gap-2">
-        <div>
-          <h2>Corpo Clínico (Médicos)</h2>
-          <p className="text-sm text-gray-500">Gestão de médicos credenciados da clínica</p>
-        </div>
-        <Button onClick={handleNovo} leftIcon={<Plus className="size-4" />}>
-          Novo Médico
-        </Button>
+    <div className="w-full max-w-[1600px] mx-auto px-gutter lg:px-margin-desktop py-space-lg flex flex-col gap-space-lg">
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Início', to: '/' },
+          { label: 'Cadastros' },
+          { label: 'Médicos' },
+        ]}
+        titulo="Corpo Clínico (Médicos)"
+        subtitulo="Gestão dos profissionais médicos credenciados para solicitação e acompanhamento de exames."
+        acoes={
+          <>
+            <Button
+              variant="secondary"
+              onClick={carregarMedicos}
+              disabled={isLoading}
+              leftIcon={
+                <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+              }
+            >
+              Atualizar
+            </Button>
+            <Button onClick={handleNovo} leftIcon={<Plus size={16} />}>
+              Novo Médico
+            </Button>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+        <MetricCard
+          titulo="Profissionais Ativos"
+          valor={medicos.length}
+          tom="primary"
+          icone={<Stethoscope size={20} />}
+          loading={isLoading}
+          detalhe="Credenciados no corpo clínico"
+        />
+        <MetricCard
+          titulo="Com CRM Informado"
+          valor={medicosComCrm}
+          tom="secondary"
+          icone={<CheckCircle2 size={20} />}
+          loading={isLoading}
+          detalhe="Registro regional preenchido"
+        />
       </div>
 
-      <div className="flex justify-between items-center flex-wrap gap-2 mt-2">
-        <div className="search-input-wrapper">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md bg-surface-container-lowest p-space-md rounded-xl border border-outline-variant/40">
+        <div className="w-full sm:max-w-sm">
           <Input
             placeholder="Buscar por nome ou CRM..."
+            leftIcon={<Search size={16} />}
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -191,15 +275,20 @@ export function Medicos() {
             }}
           />
         </div>
-        <span className="text-sm text-gray-500">
-          Total de registros: {filteredMedicos.length}
+        <span className="text-body-sm text-outline">
+          Total de registros:{' '}
+          <strong className="font-data-mono text-on-surface">
+            {filteredMedicos.length}
+          </strong>
         </span>
       </div>
 
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center p-12 gap-2">
-          <Loader2 className="animate-spin size-8 text-blue-500" />
-          <span className="text-sm text-gray-500">Carregando médicos...</span>
+        <div className="flex flex-col gap-2 bg-surface-container-lowest p-space-lg rounded-xl border border-outline-variant/40">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
         </div>
       ) : (
         <>
@@ -207,34 +296,17 @@ export function Medicos() {
             columns={columns}
             data={paginatedMedicos}
             keyExtractor={(item) => item.id}
-            emptyMessage="Nenhum médico cadastrado. Clique no botão 'Novo Médico' acima para adicionar ao corpo clínico."
+            emptyMessage="Nenhum médico cadastrado. Clique em 'Novo Médico' para adicionar ao corpo clínico."
           />
 
-          {filteredMedicos.length > pageSize && (
-            <div className="pagination-container">
-              <span className="pagination-info">
-                Página {page} de {totalPages}
-              </span>
-              <div className="pagination-actions">
-                <Button
-                  variant="secondary"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  leftIcon={<ChevronLeft className="size-4" />}
-                >
-                  Anterior
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  rightIcon={<ChevronRight className="size-4" />}
-                >
-                  Próxima
-                </Button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={filteredMedicos.length}
+            isLoading={isLoading}
+            onPageChange={setPage}
+            itemLabel="médicos"
+          />
         </>
       )}
 
@@ -244,7 +316,7 @@ export function Medicos() {
         onClose={() => setIsModalOpen(false)}
         title={isEditMode ? 'Editar Médico' : 'Novo Médico'}
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-space-md">
           <Input
             label="Nome Completo *"
             placeholder="Ex: Dr. Fernando Rocha"
@@ -259,20 +331,7 @@ export function Medicos() {
             {...register('crm')}
           />
 
-          <div className="flex flex-col gap-1 w-full opacity-75">
-            <Input
-              label="Especialidade (Indisponível no backend atual)"
-              placeholder="Ex: Cardiologia, Clínica Geral"
-              disabled
-              {...register('especialidade')}
-            />
-            <span className="text-xs text-amber-600 flex items-center gap-1 mt-1">
-              <Info className="size-3" />
-              O campo de especialidade médica aguarda inclusão no banco de dados do backend.
-            </span>
-          </div>
-
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex justify-end gap-space-sm pt-2">
             <Button
               type="button"
               variant="secondary"
@@ -284,7 +343,7 @@ export function Medicos() {
             <Button
               type="submit"
               isLoading={isSubmitting}
-              leftIcon={<Stethoscope className="size-4" />}
+              leftIcon={<Stethoscope size={16} />}
             >
               {isEditMode ? 'Salvar Alterações' : 'Cadastrar'}
             </Button>
@@ -299,28 +358,70 @@ export function Medicos() {
         title="Detalhes do Médico"
       >
         {selectedMedico && (
-          <div className="flex flex-col gap-3 text-left">
+          <div className="flex flex-col gap-space-md text-left">
             <div>
-              <span className="text-xs text-gray-500 block">Nome</span>
-              <strong>{selectedMedico.nome}</strong>
+              <span className="text-label-sm uppercase tracking-wider text-outline block">
+                Nome
+              </span>
+              <strong className="text-body-lg text-on-surface">
+                {selectedMedico.nome}
+              </strong>
             </div>
             <div>
-              <span className="text-xs text-gray-500 block">CRM</span>
-              <span>{selectedMedico.crm || 'Não informado'}</span>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 block">Especialidade</span>
-              <span className="text-sm text-gray-400 italic">Pendente no backend</span>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 block">Status</span>
-              <span className={selectedMedico.ativo ? 'badge-ok' : 'badge-alerta'}>
-                {selectedMedico.ativo ? 'Ativo' : 'Inativo'}
+              <span className="text-label-sm uppercase tracking-wider text-outline block">
+                Registro (CRM)
+              </span>
+              <span className="font-data-mono text-body-md text-on-surface">
+                {formatarCrm(selectedMedico.crm)}
               </span>
             </div>
-            <div className="flex justify-end mt-4">
+            <div>
+              <span className="text-label-sm uppercase tracking-wider text-outline block mb-1">
+                Status
+              </span>
+              {selectedMedico.ativo ? (
+                <StatusBadge variant="conforme" label="Ativo" />
+              ) : (
+                <StatusBadge variant="neutro" label="Inativo" />
+              )}
+            </div>
+            <div className="flex justify-end pt-2">
               <Button variant="secondary" onClick={() => setIsDetailsOpen(false)}>
                 Fechar
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal Desativar */}
+      <Modal
+        isOpen={Boolean(medicoParaDesativar)}
+        onClose={() => setMedicoParaDesativar(null)}
+        title="Desativar Médico"
+      >
+        {medicoParaDesativar && (
+          <div className="flex flex-col gap-space-md">
+            <p className="text-body-md text-on-surface-variant">
+              Deseja desativar o cadastro de{' '}
+              <strong className="text-on-surface">{medicoParaDesativar.nome}</strong>?
+              O histórico de atendimentos realizados será preservado.
+            </p>
+            <div className="flex justify-end gap-space-sm pt-2">
+              <Button
+                variant="secondary"
+                onClick={() => setMedicoParaDesativar(null)}
+                disabled={isDeactivating}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                onClick={confirmarDesativacao}
+                isLoading={isDeactivating}
+                leftIcon={<Archive size={16} />}
+              >
+                Desativar
               </Button>
             </div>
           </div>

@@ -555,18 +555,21 @@ export function Home() {
         {canReadAtendimentos && (
           <MetricCard
             titulo="Total de Atendimentos"
-            valor={dashboard?.totalAtendimentos ?? 0}
+            valor={
+              dashboard?.totalAtendimentos ??
+              totalEmAtendimentoCount + totalFinalizadosCount
+            }
             tom="primary"
             icone={<ClipboardList size={20} />}
             loading={isLoading}
             detalhe={
-              <div className="flex items-center justify-between bg-surface-container-low px-space-sm py-1.5 rounded-lg">
+              <div className="flex flex-wrap items-center justify-between gap-1 bg-surface-container-low px-space-sm py-1.5 rounded-lg">
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                   <strong className="font-semibold text-on-surface font-data-mono">
                     {totalEmAtendimentoCount}
                   </strong>{' '}
-                  em atendimento
+                  em aberto
                 </span>
                 <span className="font-data-mono text-outline">|</span>
                 <span className="text-outline">
@@ -575,6 +578,27 @@ export function Home() {
                   </strong>{' '}
                   finalizados
                 </span>
+                {Math.max(
+                  0,
+                  (dashboard?.totalAtendimentos ?? 0) -
+                    totalEmAtendimentoCount -
+                    totalFinalizadosCount
+                ) > 0 && (
+                  <>
+                    <span className="font-data-mono text-outline">|</span>
+                    <span className="text-outline">
+                      <strong className="font-semibold text-on-surface font-data-mono">
+                        {Math.max(
+                          0,
+                          (dashboard?.totalAtendimentos ?? 0) -
+                            totalEmAtendimentoCount -
+                            totalFinalizadosCount
+                        )}
+                      </strong>{' '}
+                      cancelados
+                    </span>
+                  </>
+                )}
               </div>
             }
           />
