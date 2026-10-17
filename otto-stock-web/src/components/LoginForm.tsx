@@ -49,7 +49,6 @@ const SUPPORT_HREF =
 export function LoginForm({ fromPath }: LoginFormProps) {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const rememberCheckboxId = useId();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const {

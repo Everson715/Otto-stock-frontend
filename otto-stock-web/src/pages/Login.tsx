@@ -77,7 +77,7 @@ export function Login() {
           </div>
 
           <div className="flex flex-wrap items-center justify-center lg:justify-end gap-2 text-inverse-on-surface/70 font-data-mono text-label-sm">
-            <span>Versão {APP_VERSION}</span>
+            <span> {APP_VERSION}</span>
             <span aria-hidden="true">•</span>
             <span className="font-sans">
               Todos os direitos reservados © {currentYear}
