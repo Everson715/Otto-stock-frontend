@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -29,8 +29,11 @@ import { Table, type Column } from '../components/ui/Table';
 
 export function Medicos() {
   const [medicos, setMedicos] = useState<Medico[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 8;
 
@@ -51,41 +54,55 @@ export function Medicos() {
     resolver: zodResolver(medicoSchema),
   });
 
-  async function carregarMedicos() {
+  // Debounce da busca textual
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  const carregarMedicos = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await api.get('/medicos');
-      const data = Array.isArray(response.data) ? response.data : response.data.items || [];
-      setMedicos(data);
+      const params: Record<string, unknown> = {
+        page,
+        limit: pageSize,
+      };
+      if (debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+
+      const response = await api.get('/medicos', { params });
+      if (
+        response.data &&
+        typeof response.data === 'object' &&
+        'items' in response.data
+      ) {
+        setMedicos(response.data.items || []);
+        setTotal(response.data.total ?? response.data.items?.length ?? 0);
+        setTotalPages(response.data.totalPages ?? 1);
+      } else if (Array.isArray(response.data)) {
+        setMedicos(response.data);
+        setTotal(response.data.length);
+        setTotalPages(Math.max(1, Math.ceil(response.data.length / pageSize)));
+      }
     } catch {
       toast.error('Erro ao carregar médicos');
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [page, pageSize, debouncedSearch]);
 
   useEffect(() => {
     carregarMedicos();
-  }, []);
-
-  const filteredMedicos = useMemo(() => {
-    const term = searchTerm.toLowerCase().trim();
-    if (!term) return medicos;
-    return medicos.filter(
-      (m) => m.nome.toLowerCase().includes(term) || (m.crm && m.crm.toLowerCase().includes(term))
-    );
-  }, [medicos, searchTerm]);
-
-  const totalPages = Math.ceil(filteredMedicos.length / pageSize) || 1;
-  const paginatedMedicos = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredMedicos.slice(start, start + pageSize);
-  }, [filteredMedicos, page, pageSize]);
+  }, [carregarMedicos]);
 
   function handleNovo() {
     setIsEditMode(false);
     setSelectedMedico(null);
-    reset({ nome: '', crm: '' });
+    reset({ nome: '', crm: '', especialidade: '' });
     setIsModalOpen(true);
   }
 
@@ -94,6 +111,7 @@ export function Medicos() {
     setSelectedMedico(medico);
     setValue('nome', medico.nome);
     setValue('crm', medico.crm || '');
+    setValue('especialidade', medico.especialidade || '');
     setIsModalOpen(true);
   }
 
@@ -104,12 +122,11 @@ export function Medicos() {
 
   async function onSubmit(data: MedicoFormData) {
     try {
-      const payload: Record<string, string | undefined> = {
+      const payload: Record<string, string | null | undefined> = {
         nome: data.nome.trim(),
+        crm: data.crm?.trim() || undefined,
+        especialidade: data.especialidade?.trim() || null,
       };
-      if (data.crm) {
-        payload.crm = data.crm.trim();
-      }
 
       if (isEditMode && selectedMedico) {
         await api.put(`/medicos/${selectedMedico.id}`, payload);
@@ -164,6 +181,14 @@ export function Medicos() {
       accessor: (m) => (
         <span className="font-data-mono text-body-md text-on-surface-variant">
           {formatarCrm(m.crm)}
+        </span>
+      ),
+    },
+    {
+      header: 'Especialidade',
+      accessor: (m) => (
+        <span className="text-body-md text-on-surface-variant">
+          {m.especialidade || '—'}
         </span>
       ),
     },
@@ -246,15 +271,15 @@ export function Medicos() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
         <MetricCard
-          titulo="Profissionais Ativos"
-          valor={medicos.length}
+          titulo="Total de Profissionais"
+          valor={total}
           tom="primary"
           icone={<Stethoscope size={20} />}
           loading={isLoading}
           detalhe="Credenciados no corpo clínico"
         />
         <MetricCard
-          titulo="Com CRM Informado"
+          titulo="Com CRM nesta página"
           valor={medicosComCrm}
           tom="secondary"
           icone={<CheckCircle2 size={20} />}
@@ -266,19 +291,16 @@ export function Medicos() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md bg-surface-container-lowest p-space-md rounded-xl border border-outline-variant/40">
         <div className="w-full sm:max-w-sm">
           <Input
-            placeholder="Buscar por nome ou CRM..."
+            placeholder="Buscar por nome, CRM ou especialidade..."
             leftIcon={<Search size={16} />}
             value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <span className="text-body-sm text-outline">
           Total de registros:{' '}
           <strong className="font-data-mono text-on-surface">
-            {filteredMedicos.length}
+            {total}
           </strong>
         </span>
       </div>
@@ -294,15 +316,15 @@ export function Medicos() {
         <>
           <Table
             columns={columns}
-            data={paginatedMedicos}
+            data={medicos}
             keyExtractor={(item) => item.id}
-            emptyMessage="Nenhum médico cadastrado. Clique em 'Novo Médico' para adicionar ao corpo clínico."
+            emptyMessage="Nenhum médico encontrado. Clique em 'Novo Médico' para adicionar ao corpo clínico."
           />
 
           <Pagination
             page={page}
             totalPages={totalPages}
-            total={filteredMedicos.length}
+            total={total}
             isLoading={isLoading}
             onPageChange={setPage}
             itemLabel="médicos"
@@ -329,6 +351,13 @@ export function Medicos() {
             placeholder="Ex: 123456/SP"
             error={errors.crm?.message}
             {...register('crm')}
+          />
+
+          <Input
+            label="Especialidade Médica"
+            placeholder="Ex: Cardiologia"
+            error={errors.especialidade?.message}
+            {...register('especialidade')}
           />
 
           <div className="flex justify-end gap-space-sm pt-2">
@@ -373,6 +402,14 @@ export function Medicos() {
               </span>
               <span className="font-data-mono text-body-md text-on-surface">
                 {formatarCrm(selectedMedico.crm)}
+              </span>
+            </div>
+            <div>
+              <span className="text-label-sm uppercase tracking-wider text-outline block">
+                Especialidade
+              </span>
+              <span className="text-body-md text-on-surface">
+                {selectedMedico.especialidade || 'Não informada'}
               </span>
             </div>
             <div>

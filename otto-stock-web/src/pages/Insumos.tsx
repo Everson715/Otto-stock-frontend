@@ -21,7 +21,11 @@ import { api } from '../api/api';
 import type { EstoqueSaldoItem } from '../types/estoqueSaldo';
 import type { Exame } from '../types/exame';
 import type { ExameInsumo } from '../types/exameInsumo';
-import type { Insumo } from '../types/insumo';
+import {
+  UNIDADES_MEDIDA,
+  UNIDADE_MEDIDA_LABELS,
+  type Insumo,
+} from '../types/insumo';
 import { getNivelEstoque } from '../utils/estoque';
 import { formatarNumero } from '../utils/format';
 import { Button } from '../components/ui/Button';
@@ -32,12 +36,16 @@ import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Pagination } from '../components/ui/Pagination';
 import { ProgressBar } from '../components/ui/ProgressBar';
+import { Select } from '../components/ui/Select';
 import { Skeleton } from '../components/ui/Skeleton';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Table, type Column } from '../components/ui/Table';
 
 const insumoFormSchema = z.object({
   nome: z.string().min(3, 'O nome deve ter no mínimo 3 caracteres'),
+  unidade: z.enum(UNIDADES_MEDIDA, {
+    message: 'Selecione uma unidade de medida válida',
+  }),
   quantidadeMinima: z
     .number({ message: 'Informe a quantidade mínima' })
     .int('A quantidade mínima deve ser um número inteiro')
@@ -95,6 +103,7 @@ export function Insumos() {
     resolver: zodResolver(insumoFormSchema),
     defaultValues: {
       nome: '',
+      unidade: 'UN',
       quantidadeMinima: 0,
       ativo: true,
     },
@@ -118,8 +127,15 @@ export function Insumos() {
   const carregarCatalogo = useCallback(async () => {
     setIsLoading(true);
     try {
+      const ativoParam =
+        statusFilter === 'todos'
+          ? 'all'
+          : statusFilter === 'inativos'
+          ? 'false'
+          : 'true';
+
       const [resInsumos, resSaldos, resVinculos, resExames] = await Promise.all([
-        api.get('/insumos', { params: { page: 1, limit: 200 } }),
+        api.get('/insumos', { params: { page: 1, limit: 200, ativo: ativoParam } }),
         api.get('/estoque/saldo').catch(() => ({ data: [] })),
         api.get('/exame-insumos').catch(() => ({ data: [] })),
         api.get('/exames').catch(() => ({ data: [] })),
@@ -157,7 +173,7 @@ export function Insumos() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [statusFilter]);
 
   useEffect(() => {
     carregarCatalogo();
@@ -228,6 +244,7 @@ export function Insumos() {
     setSelectedInsumo(null);
     reset({
       nome: '',
+      unidade: 'UN',
       quantidadeMinima: 0,
       ativo: true,
     });
@@ -238,6 +255,12 @@ export function Insumos() {
     setIsEditMode(true);
     setSelectedInsumo(insumo);
     setValue('nome', insumo.nome);
+    setValue(
+      'unidade',
+      insumo.unidade && insumo.unidade !== 'NAO_INFORMADA'
+        ? (insumo.unidade as (typeof UNIDADES_MEDIDA)[number])
+        : 'UN'
+    );
     setValue('quantidadeMinima', insumo.quantidadeMinima ?? 0);
     setValue('ativo', insumo.ativo !== false);
     setIsDrawerOpen(true);
@@ -253,12 +276,14 @@ export function Insumos() {
 
   async function onSubmitInsumo(data: InsumoFormDataLocal) {
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         nome: data.nome.trim(),
+        unidade: data.unidade,
         quantidadeMinima: Number(data.quantidadeMinima),
       };
 
       if (isEditMode && selectedInsumo) {
+        payload.ativo = data.ativo;
         await api.put(`/insumos/${selectedInsumo.id}`, payload);
         if (data.ativo === false && selectedInsumo.ativo !== false) {
           await api.delete(`/insumos/${selectedInsumo.id}`);
@@ -347,6 +372,26 @@ export function Insumos() {
           <span className="font-semibold text-on-surface">{i.nome}</span>
         </div>
       ),
+    },
+    {
+      header: 'Unidade',
+      accessor: (i) => {
+        if (!i.unidade || i.unidade === 'NAO_INFORMADA') {
+          return (
+            <span
+              className="text-body-sm text-outline cursor-help"
+              title="Unidade não cadastrada"
+            >
+              —
+            </span>
+          );
+        }
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-data-mono text-label-sm font-semibold">
+            {i.unidade}
+          </span>
+        );
+      },
     },
     {
       header: 'Exames Vinculados',
@@ -665,6 +710,16 @@ export function Insumos() {
             placeholder="Ex: Tubo EDTA 4ml Tampa Roxa"
             error={errors.nome?.message}
             {...register('nome')}
+          />
+
+          <Select
+            label="Unidade de Medida *"
+            error={errors.unidade?.message}
+            options={UNIDADES_MEDIDA.map((u) => ({
+              label: UNIDADE_MEDIDA_LABELS[u],
+              value: u,
+            }))}
+            {...register('unidade')}
           />
 
           <Input

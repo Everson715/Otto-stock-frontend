@@ -8,6 +8,7 @@ import {
   ArrowDownCircle,
   ArrowRight,
   ArrowUpCircle,
+  BarChart3,
   CheckCircle2,
   ClipboardList,
   Clock,
@@ -24,7 +25,7 @@ import { api } from '../api/api';
 import { useAuth } from '../contexts/AuthContext';
 import { hasRouteAccess } from '../types/auth';
 import type { Atendimento } from '../types/atendimento';
-import type { DashboardData } from '../types/dashboard';
+import type { DashboardData, MovimentacaoGraficoItem } from '../types/dashboard';
 import type { EstoqueSaldoItem } from '../types/estoqueSaldo';
 import type { Exame } from '../types/exame';
 import type { ExameInsumo } from '../types/exameInsumo';
@@ -87,9 +88,6 @@ export function Home() {
   const [atendimentosEmAberto, setAtendimentosEmAberto] = useState<
     Atendimento[]
   >([]);
-  const [finalizadosHojeList, setFinalizadosHojeList] = useState<Atendimento[]>(
-    []
-  );
   const [totalEmAtendimentoCount, setTotalEmAtendimentoCount] =
     useState<number>(0);
   const [totalFinalizadosCount, setTotalFinalizadosCount] = useState<number>(0);
@@ -101,6 +99,11 @@ export function Home() {
   const [movimentacoesRecentes, setMovimentacoesRecentes] = useState<
     MovimentacaoRecente[]
   >([]);
+  const [movimentacoesGrafico, setMovimentacoesGrafico] = useState<
+    MovimentacaoGraficoItem[]
+  >([]);
+  const [diasGrafico, setDiasGrafico] = useState<number>(7);
+  const [isLoadingGrafico, setIsLoadingGrafico] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
@@ -137,6 +140,31 @@ export function Home() {
     return () => window.clearInterval(timer);
   }, []);
 
+  const carregarMovimentacoesGrafico = useCallback(
+    async (dias: number) => {
+      if (!canReadSaldo) return;
+      setIsLoadingGrafico(true);
+      try {
+        const res = await api.get('/relatorios/movimentacoes-grafico', {
+          params: { dias },
+        });
+        if (Array.isArray(res.data)) {
+          setMovimentacoesGrafico(res.data);
+        }
+      } catch {
+        toast.error('Erro ao carregar gráfico de movimentações');
+      } finally {
+        setIsLoadingGrafico(false);
+      }
+    },
+    [canReadSaldo]
+  );
+
+  function handleMudarDiasGrafico(novosDias: number) {
+    setDiasGrafico(novosDias);
+    carregarMovimentacoesGrafico(novosDias);
+  }
+
   const carregarDashboard = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -145,45 +173,19 @@ export function Home() {
 
       // Bloco de Atendimentos e Exames (somente para perfis com acesso a /atendimentos)
       if (canReadAtendimentos) {
-        const hojeInicio = new Date();
-        hojeInicio.setHours(0, 0, 0, 0);
-        const hojeFim = new Date();
-        hojeFim.setHours(23, 59, 59, 999);
-
-        const [
-          resExames,
-          resVinculos,
-          resInsumos,
-          resAbertos,
-          resFinalizadosTotal,
-          resFinalizadosHoje,
-        ] = await Promise.all([
-          api.get('/exames').catch(() => ({ data: [] })),
-          api.get('/exame-insumos').catch(() => ({ data: [] })),
-          api
-            .get('/insumos', { params: { limit: 200 } })
-            .catch(() => ({ data: [] })),
-          api
-            .get('/atendimentos', {
-              params: { status: 'EM_ATENDIMENTO', limit: 6 },
-            })
-            .catch(() => ({ data: { items: [], total: 0 } })),
-          api
-            .get('/atendimentos', {
-              params: { status: 'FINALIZADO', limit: 1 },
-            })
-            .catch(() => ({ data: { total: 0 } })),
-          api
-            .get('/atendimentos', {
-              params: {
-                status: 'FINALIZADO',
-                startDate: hojeInicio.toISOString(),
-                endDate: hojeFim.toISOString(),
-                limit: 100,
-              },
-            })
-            .catch(() => ({ data: { items: [], total: 0 } })),
-        ]);
+        const [resExames, resVinculos, resInsumos, resAbertos] =
+          await Promise.all([
+            api.get('/exames').catch(() => ({ data: [] })),
+            api.get('/exame-insumos').catch(() => ({ data: [] })),
+            api
+              .get('/insumos', { params: { limit: 200 } })
+              .catch(() => ({ data: [] })),
+            api
+              .get('/atendimentos', {
+                params: { status: 'EM_ATENDIMENTO', limit: 6 },
+              })
+              .catch(() => ({ data: { items: [], total: 0 } })),
+          ]);
 
         const examesList: Exame[] = Array.isArray(resExames.data)
           ? resExames.data
@@ -220,29 +222,27 @@ export function Home() {
           (Array.isArray(resAbertos.data) ? resAbertos.data : []);
         setAtendimentosEmAberto(abertosItems);
         setTotalEmAtendimentoCount(
-          resAbertos.data?.total ?? abertosItems.length
+          resDash.data?.atendimentosPorStatus?.emAtendimento ??
+            resAbertos.data?.total ??
+            abertosItems.length
         );
 
         setTotalFinalizadosCount(
-          resFinalizadosTotal.data?.total ??
-            resFinalizadosTotal.data?.items?.length ??
-            0
+          resDash.data?.atendimentosPorStatus?.finalizados ?? 0
         );
-
-        const finHojeItems: Atendimento[] =
-          resFinalizadosHoje.data?.items ??
-          (Array.isArray(resFinalizadosHoje.data)
-            ? resFinalizadosHoje.data
-            : []);
-        setFinalizadosHojeList(finHojeItems);
       }
 
       // Bloco de Saldo e Movimentações (somente para perfis com acesso a /estoque/saldo)
       if (canReadSaldo) {
-        const [resSaldo, resMov] = await Promise.all([
+        const [resSaldo, resMov, resGrafico] = await Promise.all([
           api.get('/estoque/saldo').catch(() => ({ data: [] })),
           api
             .get('/estoque/movimentacoes', { params: { limit: 5 } })
+            .catch(() => ({ data: [] })),
+          api
+            .get('/relatorios/movimentacoes-grafico', {
+              params: { dias: diasGrafico },
+            })
             .catch(() => ({ data: [] })),
         ]);
 
@@ -255,6 +255,13 @@ export function Home() {
           ? resMov.data
           : resMov.data?.items || [];
         setMovimentacoesRecentes(movItems);
+
+        const grafItems: MovimentacaoGraficoItem[] = Array.isArray(
+          resGrafico.data
+        )
+          ? resGrafico.data
+          : [];
+        setMovimentacoesGrafico(grafItems);
       }
 
       setLastUpdatedAt(new Date());
@@ -263,7 +270,7 @@ export function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [canReadAtendimentos, canReadSaldo]);
+  }, [canReadAtendimentos, canReadSaldo, diasGrafico]);
 
   useEffect(() => {
     carregarDashboard();
@@ -292,16 +299,34 @@ export function Home() {
     };
   }, [saldos]);
 
-  // Métricas de Exames Realizados Hoje (FINALIZADO do dia + protocolos distintos)
+  // Métricas de Exames Realizados Hoje (atendimentosPorStatus do dashboard)
   const metricasExamesHoje = useMemo(() => {
-    const protocolosDistintos = new Set(
-      finalizadosHojeList.map((a) => a.exameId)
-    ).size;
     return {
-      totalHoje: finalizadosHojeList.length,
-      protocolosDistintos,
+      totalHoje: dashboard?.atendimentosPorStatus?.finalizadosHoje ?? 0,
+      protocolosDistintos:
+        dashboard?.atendimentosPorStatus?.protocolosDistintosHoje ?? 0,
     };
-  }, [finalizadosHojeList]);
+  }, [dashboard]);
+
+  // Agregações da Série Histórica de Movimentações
+  const totaisGrafico = useMemo(() => {
+    let entradas = 0;
+    let saidas = 0;
+    let ajustes = 0;
+    let operacoes = 0;
+    let maxValor = 1;
+
+    movimentacoesGrafico.forEach((item) => {
+      entradas += item.entradasQtd || 0;
+      saidas += item.saidasQtd || 0;
+      ajustes += item.ajustesLiquidoQtd || 0;
+      operacoes += item.totalOperacoes || 0;
+      if (item.entradasQtd > maxValor) maxValor = item.entradasQtd;
+      if (item.saidasQtd > maxValor) maxValor = item.saidasQtd;
+    });
+
+    return { entradas, saidas, ajustes, operacoes, maxValor };
+  }, [movimentacoesGrafico]);
 
   const totalExamesNoGrafico = useMemo(
     () =>
@@ -567,33 +592,39 @@ export function Home() {
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                   <strong className="font-semibold text-on-surface font-data-mono">
-                    {totalEmAtendimentoCount}
+                    {dashboard?.atendimentosPorStatus?.emAtendimento ??
+                      totalEmAtendimentoCount}
                   </strong>{' '}
                   em aberto
                 </span>
                 <span className="font-data-mono text-outline">|</span>
                 <span className="text-outline">
                   <strong className="font-semibold text-on-surface font-data-mono">
-                    {totalFinalizadosCount}
+                    {dashboard?.atendimentosPorStatus?.finalizados ??
+                      totalFinalizadosCount}
                   </strong>{' '}
                   finalizados
                 </span>
-                {Math.max(
-                  0,
-                  (dashboard?.totalAtendimentos ?? 0) -
-                    totalEmAtendimentoCount -
-                    totalFinalizadosCount
-                ) > 0 && (
+                {Boolean(
+                  (dashboard?.atendimentosPorStatus?.cancelados ??
+                    Math.max(
+                      0,
+                      (dashboard?.totalAtendimentos ?? 0) -
+                        totalEmAtendimentoCount -
+                        totalFinalizadosCount
+                    )) > 0
+                ) && (
                   <>
                     <span className="font-data-mono text-outline">|</span>
                     <span className="text-outline">
                       <strong className="font-semibold text-on-surface font-data-mono">
-                        {Math.max(
-                          0,
-                          (dashboard?.totalAtendimentos ?? 0) -
-                            totalEmAtendimentoCount -
-                            totalFinalizadosCount
-                        )}
+                        {dashboard?.atendimentosPorStatus?.cancelados ??
+                          Math.max(
+                            0,
+                            (dashboard?.totalAtendimentos ?? 0) -
+                              totalEmAtendimentoCount -
+                              totalFinalizadosCount
+                          )}
                       </strong>{' '}
                       cancelados
                     </span>
@@ -734,7 +765,9 @@ export function Home() {
               <div className="flex flex-col gap-space-md">
                 {dashboard.examesMaisRealizados.map((item) => {
                   const nome =
-                    examesMap[item.exameId] || `Exame #${item.exameId}`;
+                    item.nome ||
+                    examesMap[item.exameId] ||
+                    `Exame #${item.exameId}`;
                   const count = item._count.id;
                   const percent =
                     totalExamesNoGrafico > 0
@@ -793,6 +826,193 @@ export function Home() {
           </div>
         )}
       </div>
+
+      {/* Série Histórica Temporal de Movimentações */}
+      {canReadSaldo && (
+        <div className="bg-surface-container-lowest p-space-lg rounded-xl border border-outline-variant/40 shadow-[0_1px_2px_0_rgb(15_23_42/0.04)] flex flex-col gap-space-md text-left">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md flex-wrap border-b border-outline-variant/30 pb-space-sm">
+            <div className="flex items-center gap-2">
+              <BarChart3 size={20} className="text-primary shrink-0" />
+              <div>
+                <h2 className="text-headline-sm font-semibold text-on-surface m-0">
+                  Movimentações de Estoque (Série Temporal)
+                </h2>
+                <p className="text-body-sm text-outline m-0">
+                  Volume agregado diário de entradas, saídas e ajustes no fuso operacional (America/Sao_Paulo).
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-surface-container-low">
+                {([7, 15, 30] as const).map((dias) => (
+                  <button
+                    key={dias}
+                    type="button"
+                    onClick={() => handleMudarDiasGrafico(dias)}
+                    className={`px-3 py-1 rounded-md text-label-sm font-semibold transition-colors cursor-pointer ${
+                      diasGrafico === dias
+                        ? 'bg-surface-container-lowest text-primary shadow-2xs'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    {dias} dias
+                  </button>
+                ))}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleMudarDiasGrafico(diasGrafico)}
+                disabled={isLoadingGrafico}
+                title="Atualizar série temporal"
+              >
+                <RefreshCw
+                  size={14}
+                  className={isLoadingGrafico ? 'animate-spin' : ''}
+                />
+              </Button>
+            </div>
+          </div>
+
+          {/* Resumo do Período */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-space-sm">
+            <div className="flex flex-col p-space-sm rounded-lg bg-surface-container-low/60 border border-outline-variant/20">
+              <span className="text-label-xs uppercase tracking-wider text-outline font-semibold">
+                Entradas
+              </span>
+              <strong className="text-title-md font-data-mono text-secondary">
+                +{formatarNumero(totaisGrafico.entradas)}
+              </strong>
+            </div>
+            <div className="flex flex-col p-space-sm rounded-lg bg-surface-container-low/60 border border-outline-variant/20">
+              <span className="text-label-xs uppercase tracking-wider text-outline font-semibold">
+                Saídas
+              </span>
+              <strong className="text-title-md font-data-mono text-error">
+                -{formatarNumero(totaisGrafico.saidas)}
+              </strong>
+            </div>
+            <div className="flex flex-col p-space-sm rounded-lg bg-surface-container-low/60 border border-outline-variant/20">
+              <span className="text-label-xs uppercase tracking-wider text-outline font-semibold">
+                Ajuste Líquido
+              </span>
+              <strong
+                className={`text-title-md font-data-mono ${
+                  totaisGrafico.ajustes >= 0 ? 'text-primary' : 'text-error'
+                }`}
+              >
+                {totaisGrafico.ajustes > 0 ? '+' : ''}
+                {formatarNumero(totaisGrafico.ajustes)}
+              </strong>
+            </div>
+            <div className="flex flex-col p-space-sm rounded-lg bg-surface-container-low/60 border border-outline-variant/20">
+              <span className="text-label-xs uppercase tracking-wider text-outline font-semibold">
+                Total Operações
+              </span>
+              <strong className="text-title-md font-data-mono text-on-surface">
+                {formatarNumero(totaisGrafico.operacoes)}
+              </strong>
+            </div>
+          </div>
+
+          {/* Legenda */}
+          <div className="flex items-center gap-space-md text-label-xs text-outline font-medium">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-xs bg-secondary inline-block" />
+              Entradas
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-xs bg-error inline-block" />
+              Saídas
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-xs bg-tertiary inline-block" />
+              Ajustes
+            </span>
+          </div>
+
+          {/* Gráfico de Barras */}
+          {isLoadingGrafico || isLoading ? (
+            <div className="flex items-end gap-2 h-44 p-4 rounded-xl bg-surface-container-low/30">
+              {Array.from({ length: diasGrafico }).map((_, idx) => (
+                <Skeleton key={idx} className="flex-1 h-24" />
+              ))}
+            </div>
+          ) : movimentacoesGrafico.length === 0 ? (
+            <div className="p-space-lg rounded-xl bg-surface-container-low/50 text-center text-body-sm text-outline">
+              Nenhuma movimentação registrada no período selecionado.
+            </div>
+          ) : (
+            <div className="overflow-x-auto pb-1">
+              <div className="flex items-end gap-2 sm:gap-3 min-w-[500px] h-48 pt-6 pb-2 px-2 rounded-xl bg-surface-container-low/40 border border-outline-variant/20">
+                {movimentacoesGrafico.map((m) => {
+                  const dataPartes = m.data.split('-');
+                  const dataFormatada =
+                    dataPartes.length === 3
+                      ? `${dataPartes[2]}/${dataPartes[1]}`
+                      : m.data;
+                  const maxRef = Math.max(1, totaisGrafico.maxValor);
+                  const alturaEntrada = Math.max(
+                    m.entradasQtd > 0 ? 8 : 2,
+                    Math.round((m.entradasQtd / maxRef) * 100)
+                  );
+                  const alturaSaida = Math.max(
+                    m.saidasQtd > 0 ? 8 : 2,
+                    Math.round((m.saidasQtd / maxRef) * 100)
+                  );
+
+                  return (
+                    <div
+                      key={m.data}
+                      className="flex-1 flex flex-col items-center h-full justify-end group relative"
+                    >
+                      {/* Tooltip no Hover */}
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none absolute bottom-full mb-2 z-20 whitespace-nowrap bg-on-surface text-surface text-label-xs rounded-lg p-2 shadow-lg flex flex-col gap-0.5 font-medium">
+                        <strong className="text-surface font-semibold">
+                          {m.data}
+                        </strong>
+                        <span className="text-secondary font-data-mono">
+                          Entradas: +{formatarNumero(m.entradasQtd)}
+                        </span>
+                        <span className="text-error font-data-mono">
+                          Saídas: -{formatarNumero(m.saidasQtd)}
+                        </span>
+                        <span className="text-tertiary font-data-mono">
+                          Ajuste líq: {m.ajustesLiquidoQtd > 0 ? '+' : ''}
+                          {formatarNumero(m.ajustesLiquidoQtd)}
+                        </span>
+                        <span className="text-outline text-label-xs font-data-mono border-t border-surface/20 pt-0.5">
+                          {m.totalOperacoes} operação(ões)
+                        </span>
+                      </div>
+
+                      {/* Barras Lado a Lado */}
+                      <div className="w-full flex items-end justify-center gap-1 h-36">
+                        <div
+                          className="w-1/2 max-w-[18px] bg-secondary/80 group-hover:bg-secondary rounded-t transition-all duration-200"
+                          style={{ height: `${alturaEntrada}%` }}
+                          title={`Entradas: +${m.entradasQtd}`}
+                        />
+                        <div
+                          className="w-1/2 max-w-[18px] bg-error/80 group-hover:bg-error rounded-t transition-all duration-200"
+                          style={{ height: `${alturaSaida}%` }}
+                          title={`Saídas: -${m.saidasQtd}`}
+                        />
+                      </div>
+
+                      {/* Rótulo da Data */}
+                      <span className="text-label-xs text-outline font-data-mono mt-2 truncate">
+                        {dataFormatada}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Segunda Linha: Atendimentos em Aberto + Histórico Recente de Movimentações */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-space-lg items-start">

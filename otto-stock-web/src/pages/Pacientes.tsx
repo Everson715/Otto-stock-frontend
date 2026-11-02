@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { api } from '../api/api';
 import { pacienteSchema } from '../types/paciente';
 import type { Paciente, PacienteFormData } from '../types/paciente';
-import { calcularIdade } from '../utils/format';
+import { calcularIdade, mascararCpf, formatarCpfCompleto } from '../utils/format';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
@@ -27,8 +27,11 @@ import { Table, type Column } from '../components/ui/Table';
 
 export function Pacientes() {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 8;
 
@@ -49,36 +52,50 @@ export function Pacientes() {
     resolver: zodResolver(pacienteSchema),
   });
 
-  async function carregarPacientes() {
+  // Debounce da busca textual
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  const carregarPacientes = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await api.get('/pacientes');
-      const data = Array.isArray(response.data) ? response.data : response.data.items || [];
-      setPacientes(data);
+      const params: Record<string, unknown> = {
+        page,
+        limit: pageSize,
+      };
+      if (debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+
+      const response = await api.get('/pacientes', { params });
+      if (
+        response.data &&
+        typeof response.data === 'object' &&
+        'items' in response.data
+      ) {
+        setPacientes(response.data.items || []);
+        setTotal(response.data.total ?? response.data.items?.length ?? 0);
+        setTotalPages(response.data.totalPages ?? 1);
+      } else if (Array.isArray(response.data)) {
+        setPacientes(response.data);
+        setTotal(response.data.length);
+        setTotalPages(Math.max(1, Math.ceil(response.data.length / pageSize)));
+      }
     } catch {
       toast.error('Erro ao carregar pacientes');
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [page, pageSize, debouncedSearch]);
 
   useEffect(() => {
     carregarPacientes();
-  }, []);
-
-  const filteredPacientes = useMemo(() => {
-    const term = searchTerm.toLowerCase().trim();
-    if (!term) return pacientes;
-    return pacientes.filter(
-      (p) => p.nome.toLowerCase().includes(term) || (p.cpf && p.cpf.includes(term))
-    );
-  }, [pacientes, searchTerm]);
-
-  const totalPages = Math.ceil(filteredPacientes.length / pageSize) || 1;
-  const paginatedPacientes = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredPacientes.slice(start, start + pageSize);
-  }, [filteredPacientes, page, pageSize]);
+  }, [carregarPacientes]);
 
   function handleNovo() {
     setIsEditMode(false);
@@ -174,8 +191,11 @@ export function Pacientes() {
     {
       header: 'CPF',
       accessor: (p) => (
-        <span className="font-data-mono text-body-md text-on-surface-variant">
-          {p.cpf}
+        <span
+          className="font-data-mono text-body-md text-on-surface-variant"
+          title="CPF protegido (LGPD)"
+        >
+          {mascararCpf(p.cpf)}
         </span>
       ),
     },
@@ -256,16 +276,13 @@ export function Pacientes() {
             placeholder="Buscar por nome ou CPF..."
             leftIcon={<Search size={16} />}
             value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <span className="text-body-sm text-outline">
           Total de registros:{' '}
           <strong className="font-data-mono text-on-surface">
-            {filteredPacientes.length}
+            {total}
           </strong>
         </span>
       </div>
@@ -281,7 +298,7 @@ export function Pacientes() {
         <>
           <Table
             columns={columns}
-            data={paginatedPacientes}
+            data={pacientes}
             keyExtractor={(item) => item.id}
             emptyMessage="Nenhum paciente cadastrado. Clique em 'Novo Paciente' para iniciar o cadastro."
           />
@@ -289,7 +306,7 @@ export function Pacientes() {
           <Pagination
             page={page}
             totalPages={totalPages}
-            total={filteredPacientes.length}
+            total={total}
             isLoading={isLoading}
             onPageChange={setPage}
             itemLabel="pacientes"
@@ -374,7 +391,7 @@ export function Pacientes() {
                 CPF
               </span>
               <span className="font-data-mono text-body-md text-on-surface">
-                {selectedPaciente.cpf}
+                {formatarCpfCompleto(selectedPaciente.cpf)}
               </span>
             </div>
             <div>
